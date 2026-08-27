@@ -232,7 +232,7 @@ async def validate_analysis_constraints(
 
         # Check if any candidates were classified as strict comparable without verified target genres
         for candidate_id, classification in registry.candidate_classifications.items():
-            if classification.value == "strict_comparable" and not target_genres_verified:
+            if str(getattr(classification, "value", classification)) == "strict_comparable" and not target_genres_verified:
                 evidence_gates.append(
                     f"Candidate '{candidate_id}' classified as strict_comparable "
                     f"but target genres are not verified"
@@ -241,7 +241,7 @@ async def validate_analysis_constraints(
         # Validate all claims
         claim_statuses = registry.validate_all_claims()
         for claim_id, claim_status in claim_statuses.items():
-            if claim_status.value == "gated":
+            if str(getattr(claim_status, "value", claim_status)) == "gated":
                 claim = registry.claims[claim_id]
                 evidence_gates.append(
                     f"Claim '{claim_id}' is gated by evidence: {claim.gated_by}"
@@ -385,7 +385,7 @@ async def generate_acquisition_memo(
 
         claim_statuses = registry.validate_all_claims()
         for claim_id, claim_status in claim_statuses.items():
-            if claim_status.value == "gated":
+            if str(getattr(claim_status, "value", claim_status)) == "gated":
                 claim = registry.claims[claim_id]
                 evidence_gates.append({
                     "claim_id": claim_id,
@@ -1169,7 +1169,7 @@ async def generate_html_memo(
 
         claim_statuses = registry.validate_all_claims()
         for claim_id, claim_status in claim_statuses.items():
-            if claim_status.value == "gated":
+            if str(getattr(claim_status, "value", claim_status)) == "gated":
                 claim = registry.claims[claim_id]
                 evidence_gates.append({
                     "claim_id": claim_id,

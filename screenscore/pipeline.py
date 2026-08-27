@@ -1086,7 +1086,15 @@ async def record_evidence(
         "candidate_classifications": pipeline.get("candidate_classifications", {}),
     })
 
-    evidence_status = EvidenceStatus(status)
+    try:
+        evidence_status = EvidenceStatus(status.lower())
+    except (ValueError, AttributeError):
+        valid_statuses = [e.value for e in EvidenceStatus]
+        return {
+            "status": "error",
+            "message": f"Invalid status '{status}'. Must be one of: {valid_statuses}",
+        }
+
     item = registry.record_evidence(
         key=key,
         description=description,
@@ -1149,16 +1157,17 @@ async def validate_claim(
     # Persist back to pipeline state
     pipeline["evidence_claims"] = registry.to_dict()["claims"]
 
+    claim_status_str = getattr(claim.status, "value", str(claim.status))
     _log_transition(
         pipeline,
-        f"[EVIDENCE] Claim {claim_id}: {claim.status.value} "
+        f"[EVIDENCE] Claim {claim_id}: {claim_status_str} "
         f"(gated_by: {claim.gated_by or 'none'})",
     )
 
     return {
         "status": "success",
         "claim_id": claim_id,
-        "claim_status": claim.status.value,
+        "claim_status": claim_status_str,
         "gated_by": claim.gated_by,
         "required_evidence": required_evidence,
     }
@@ -1201,15 +1210,16 @@ async def classify_candidate(
     # Persist back to pipeline state
     pipeline["candidate_classifications"] = registry.to_dict()["candidate_classifications"]
 
+    classification_str = getattr(classification, "value", str(classification))
     _log_transition(
         pipeline,
-        f"[EVIDENCE] Candidate {candidate_id} classified as {classification.value}",
+        f"[EVIDENCE] Candidate {candidate_id} classified as {classification_str}",
     )
 
     return {
         "status": "success",
         "candidate_id": candidate_id,
-        "classification": classification.value,
+        "classification": classification_str,
         "target_genres_verified": target_genres_verified,
         "has_genre_overlap": has_genre_overlap,
         "has_entity_match": has_entity_match,
@@ -1245,7 +1255,7 @@ async def get_evidence_status(
     return {
         "status": "success",
         "evidence_key": key,
-        "evidence_status": evidence_status.value,
+        "evidence_status": getattr(evidence_status, "value", str(evidence_status)),
     }
 
 

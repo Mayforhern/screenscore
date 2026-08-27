@@ -241,7 +241,7 @@ class EvidenceRegistry:
                 if claim.status == ClaimStatus.GATED
             ),
             "candidate_classifications": {
-                candidate_id: classification.value
+                candidate_id: getattr(classification, "value", str(classification))
                 for candidate_id, classification in self.candidate_classifications.items()
             },
         }
@@ -253,7 +253,7 @@ class EvidenceRegistry:
                 key: {
                     "key": item.key,
                     "description": item.description,
-                    "status": item.status.value,
+                    "status": getattr(item.status, "value", str(item.status)),
                     "source_query": item.source_query,
                     "source_tool": item.source_tool,
                     "value": item.value,
@@ -266,7 +266,7 @@ class EvidenceRegistry:
                     "claim_id": claim.claim_id,
                     "description": claim.description,
                     "required_evidence": claim.required_evidence,
-                    "status": claim.status.value,
+                    "status": getattr(claim.status, "value", str(claim.status)),
                     "gated_by": claim.gated_by,
                     "metadata": claim.metadata,
                 }
@@ -274,7 +274,7 @@ class EvidenceRegistry:
             },
             "dependencies": self.dependencies,
             "candidate_classifications": {
-                key: value.value
+                key: getattr(value, "value", str(value))
                 for key, value in self.candidate_classifications.items()
             },
         }
@@ -285,10 +285,14 @@ class EvidenceRegistry:
         registry = cls()
         
         for key, item_data in data.get("items", {}).items():
+            try:
+                status = EvidenceStatus(item_data["status"])
+            except ValueError:
+                status = EvidenceStatus.NOT_VERIFIED
             registry.items[key] = EvidenceItem(
                 key=item_data["key"],
                 description=item_data["description"],
-                status=EvidenceStatus(item_data["status"]),
+                status=status,
                 source_query=item_data.get("source_query"),
                 source_tool=item_data.get("source_tool"),
                 value=item_data.get("value"),
@@ -296,11 +300,15 @@ class EvidenceRegistry:
             )
         
         for claim_id, claim_data in data.get("claims", {}).items():
+            try:
+                status = ClaimStatus(claim_data["status"])
+            except ValueError:
+                status = ClaimStatus.UNKNOWN
             registry.claims[claim_id] = EvidenceClaim(
                 claim_id=claim_data["claim_id"],
                 description=claim_data["description"],
                 required_evidence=claim_data["required_evidence"],
-                status=ClaimStatus(claim_data["status"]),
+                status=status,
                 gated_by=claim_data.get("gated_by", []),
                 metadata=claim_data.get("metadata", {}),
             )
@@ -308,6 +316,10 @@ class EvidenceRegistry:
         registry.dependencies = data.get("dependencies", {})
         
         for key, class_value in data.get("candidate_classifications", {}).items():
-            registry.candidate_classifications[key] = CandidateClass(class_value)
+            try:
+                registry.candidate_classifications[key] = CandidateClass(class_value)
+            except ValueError:
+                pass
         
         return registry
+
