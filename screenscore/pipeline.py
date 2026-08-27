@@ -285,11 +285,14 @@ async def plan_query(
     query_id: str,
     purpose: str,
     sql_template: str,
+    is_follow_up: bool | None = None,
     tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
     """Register a planned query in pipeline state.
 
     Call this BEFORE executing the query via run_query.
+    Set is_follow_up=True explicitly for dynamic follow-up queries.
+    If not set, the flag is inferred from the purpose string (legacy behaviour).
     """
     if not tool_context:
         return {"status": "error", "message": "tool_context required"}
@@ -332,8 +335,9 @@ async def plan_query(
     }
 
     # Track query origin (initial vs follow-up)
-    is_follow_up = "Follow-up to" in purpose
-    if is_follow_up:
+    # Prefer explicit param; fall back to purpose-string heuristic for backwards compatibility
+    _is_follow_up = is_follow_up if is_follow_up is not None else ("Follow-up to" in purpose)
+    if _is_follow_up:
         pipeline.setdefault("dynamic_follow_up_queries", []).append(query_id)
     else:
         pipeline.setdefault("initially_planned_queries", []).append(query_id)
@@ -1087,13 +1091,16 @@ async def record_evidence(
     })
 
     try:
-        evidence_status = EvidenceStatus(status.lower())
+        # Accept both string and EvidenceStatus enum objects
+        status_str = status.value if hasattr(status, "value") else str(status)
+        evidence_status = EvidenceStatus(status_str.lower())
     except (ValueError, AttributeError):
         valid_statuses = [e.value for e in EvidenceStatus]
         return {
             "status": "error",
             "message": f"Invalid status '{status}'. Must be one of: {valid_statuses}",
         }
+
 
     item = registry.record_evidence(
         key=key,

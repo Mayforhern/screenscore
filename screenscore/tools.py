@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,10 +14,6 @@ from .pipeline import (
     _log_transition,
     RESEARCH_MAX_LIMIT,
 )
-
-import re
-import traceback
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -222,8 +219,13 @@ async def validate_analysis_constraints(
             "candidate_classifications": pipeline.get("candidate_classifications", {}),
         })
 
-        # Check if target genres are verified
-        target_genres_verified = registry.get_evidence_status("target_genres") in ("verified", "derived")
+        # Check if target genres are verified — get_evidence_status returns EvidenceStatus | None
+        _tg_status = registry.get_evidence_status("target_genres")
+        target_genres_verified = (
+            _tg_status is not None
+            and str(getattr(_tg_status, "value", _tg_status)) in ("verified", "derived")
+        )
+
         checks["target_genres_verified"] = {
             "value": target_genres_verified,
             "pass": target_genres_verified,
@@ -405,12 +407,26 @@ async def generate_acquisition_memo(
             "message": "recommendation must be one of: ACQUIRE, PASS, FURTHER_REVIEW",
         }
 
+    # W7: Soft truncation — prevent runaway artifact sizes
+    _MAX_RATIONALE = 4000
+    _MAX_SQL_QUERIES = 30
+    _truncation_warnings: list[str] = []
+    if len(rationale) > _MAX_RATIONALE:
+        rationale = rationale[:_MAX_RATIONALE] + "\n\n*[Rationale truncated for length]*"
+        _truncation_warnings.append(f"rationale truncated to {_MAX_RATIONALE} chars")
+    if sql_queries_run and len(sql_queries_run) > _MAX_SQL_QUERIES:
+        sql_queries_run = sql_queries_run[:_MAX_SQL_QUERIES]
+        _truncation_warnings.append(f"sql_queries_run truncated to {_MAX_SQL_QUERIES} entries")
+    if _truncation_warnings:
+        logger.warning("generate_acquisition_memo: input truncated — %s", "; ".join(_truncation_warnings))
+
     logger.info(
         "Generating acquisition memo for '%s' — recommendation: %s",
         title, recommendation,
     )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
 
     if comparable_titles:
         comp_rows = ""

@@ -642,3 +642,68 @@ SYSTEM_PROMPT = "\n\n".join([
     UNAVAILABLE_FIELDS,
     DIRECTOR_RULES,
 ])
+
+# =============================================================================
+# SUB-AGENT INSTRUCTIONS (used by the multi-agent graph in agent.py)
+# Each sub-agent receives only the instructions relevant to its responsibility.
+# =============================================================================
+
+ORCHESTRATOR_PROMPT = "\n\n".join([
+    PERSONA,
+    PIPELINE_HEADER,
+    """ORCHESTRATION:
+You coordinate a four-stage acquisition pipeline by delegating to specialised sub-agents.
+Execute them in this order for every acquisition request:
+
+  1. schema_agent  — Step 1-2: schema discovery + pipeline initialisation
+  2. query_agent   — Step 3-4: SQL planning, execution, and adaptive recovery
+  3. evidence_agent — Step 5-6: analysis, evidence tracking, synthetic benchmarks
+  4. decision_agent — Step 7-8: constraint validation + memo generation
+
+After each sub-agent completes, check_terminal_conditions().
+If a sub-agent signals a critical failure, stop and report — do NOT continue to the next stage.
+Never run steps out of order. Never skip the memo stage.""",
+    TOOL_FAILURE_HANDLING,
+    UNAVAILABLE_FIELDS,
+])
+
+SCHEMA_AGENT_PROMPT = "\n\n".join([
+    PERSONA,
+    STEP_1_SCHEMA,
+    STEP_2_DISCOVER,
+    PIPELINE_STATUS,
+    UNAVAILABLE_FIELDS,
+])
+
+QUERY_AGENT_PROMPT = "\n\n".join([
+    PERSONA,
+    STEP_3_PLAN,
+    STEP_4_QUERIES,
+    ADAPTIVE_QUERY_RECOVERY,
+    TERMINAL_CONDITIONS,
+    QUERY_METADATA_LOGGING,
+    TOOL_FAILURE_HANDLING,
+    MODEL_QUOTA_HANDLING,
+    EVIDENCE_PROVENANCE,
+    DIRECTOR_RULES,
+    UNAVAILABLE_FIELDS,
+])
+
+EVIDENCE_AGENT_PROMPT = "\n\n".join([
+    PERSONA,
+    STEP_5_ANALYZE,
+    STEP_6_SYNTHETIC_COMPS,
+    AGENT_EVIDENCE,
+    EVIDENCE_PROVENANCE,
+    UNAVAILABLE_FIELDS,
+])
+
+DECISION_AGENT_PROMPT = "\n\n".join([
+    PERSONA,
+    STEP_7_VALIDATION,
+    STEP_8_DECIDE,
+    TERMINAL_CONDITIONS,
+    PIPELINE_STATUS,
+    TOOL_FAILURE_HANDLING,
+    UNAVAILABLE_FIELDS,
+])

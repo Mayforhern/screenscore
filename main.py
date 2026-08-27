@@ -26,7 +26,17 @@ adk_app = get_fast_api_app(
     auto_create_session=True,
 )
 
-_index_html = (_DIR / "screenscore" / "templates" / "index.html").read_text()
+_INDEX_PATH = _DIR / "screenscore" / "templates" / "index.html"
+try:
+    _index_html = _INDEX_PATH.read_text()
+except FileNotFoundError:
+    logger.warning("index.html not found at %s — serving minimal fallback", _INDEX_PATH)
+    _index_html = (
+        "<!DOCTYPE html><html><head><title>ScreenScore</title></head>"
+        "<body><h1>ScreenScore</h1>"
+        "<p><a href='/dev-ui/'>Launch Agent →</a></p></body></html>"
+    )
+
 
 
 async def _landing(request: Request):

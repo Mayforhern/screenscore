@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 .env
 .adk/
+**/.adk/
 *.db
 *.log
 tmp/
+.pytest_cache/

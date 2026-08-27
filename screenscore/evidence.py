@@ -50,6 +50,13 @@ class EvidenceItem:
     value: Any = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
+    def __post_init__(self) -> None:
+        """Validate evidence item fields on construction."""
+        if not self.key or not self.key.strip():
+            raise ValueError("EvidenceItem key must be a non-empty string")
+        if not self.description:
+            raise ValueError("EvidenceItem description must be a non-empty string")
+
     def is_available(self) -> bool:
         """Check if this evidence is usable for claims."""
         return self.status in (EvidenceStatus.VERIFIED, EvidenceStatus.DERIVED)
@@ -109,9 +116,10 @@ class EvidenceRegistry:
         for dependency_key in self._get_dependencies(key):
             dep_status = self.items.get(dependency_key, EvidenceItem(
                 key=dependency_key,
-                description="",
+                description="[sentinel — dependency not yet recorded]",
                 status=EvidenceStatus.NOT_COMPUTABLE,
             )).status
+
             if dep_status in (EvidenceStatus.CONTRADICTED, EvidenceStatus.NOT_COMPUTABLE):
                 item.status = dep_status
                 break
