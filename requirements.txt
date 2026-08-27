@@ -1,0 +1,5 @@
+google-adk>=2.7.0
+mcp-clickhouse>=0.4.1
+clickhouse-connect>=1.7.0
+pytest>=9.0.0
+pytest-asyncio>=1.0.0

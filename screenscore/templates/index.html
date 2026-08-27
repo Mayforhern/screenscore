@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScreenScore — Studio Acquisition Analyst</title>
+<meta name="description" content="AI-powered acquisition analysis on 388K+ IMDb titles via ClickHouse. ScreenScore produces data-backed acquisition memos — Acquire, Pass, or Further Review.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0c0c0c;
+    --bg2: #111111;
+    --bg3: #161616;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(200,50,50,0.35);
+    --red: #c8373a;
+    --red-dim: rgba(200,55,58,0.12);
+    --text: #e8e4e0;
+    --text-muted: #6b6560;
+    --text-soft: #9d9590;
+    --radius: 10px;
+    --font: 'Inter', sans-serif;
+    --font-display: 'Playfair Display', serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 48px;
+    background: rgba(12,12,12,0.88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--text-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    padding: 9px 22px;
+    background: var(--red);
+    color: #fff !important;
+    border-radius: 6px;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .nav-cta:hover { background: #e04044 !important; }
+  .nav-hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+  }
+  .nav-hamburger span {
+    display: block; width: 22px; height: 2px;
+    background: var(--text); border-radius: 2px;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 700px;
+    background: radial-gradient(ellipse, rgba(200,55,58,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--border-hover);
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+    background: var(--red-dim);
+  }
+  .hero-badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.8); }
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 8vw, 6.2rem);
+    font-weight: 900;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 28px;
+    max-width: 900px;
+  }
+  .hero h1 em { font-style: italic; color: var(--red); }
+  .hero-sub {
+    font-size: clamp(0.95rem, 2vw, 1.15rem);
+    color: var(--text-soft);
+    max-width: 540px;
+    line-height: 1.75;
+    margin-bottom: 48px;
+    font-weight: 400;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 32px;
+    background: var(--red); color: #fff;
+    font-size: 0.88rem; font-weight: 700;
+    text-decoration: none; border-radius: 7px;
+    letter-spacing: 0.03em;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .btn-primary:hover {
+    background: #e04044; transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(200,55,58,0.32);
+  }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 28px;
+    background: transparent; color: var(--text-soft);
+    font-size: 0.88rem; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--border); border-radius: 7px;
+    transition: border-color 0.2s, color 0.2s, transform 0.15s;
+  }
+  .btn-secondary:hover {
+    border-color: rgba(255,255,255,0.18); color: var(--text); transform: translateY(-2px);
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 48px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .stat-item {
+    text-align: center; padding: 0 24px;
+    border-right: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    font-weight: 700; color: var(--text); display: block;
+  }
+  .stat-label {
+    font-size: 0.76rem; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;
+  }
+
+  /* SECTIONS */
+  .section { max-width: 1100px; margin: 0 auto; padding: 100px 48px; }
+  .section-tag {
+    font-size: 0.7rem; font-weight: 700; color: var(--red);
+    text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 16px;
+  }
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700; line-height: 1.1;
+    letter-spacing: -0.02em; color: var(--text);
+    margin-bottom: 20px; max-width: 700px;
+  }
+  .section-heading em { font-style: italic; color: var(--red); }
+  .section-desc { color: var(--text-soft); font-size: 1rem; line-height: 1.75; max-width: 520px; }
+
+  /* PIPELINE (6 STEPS) */
+  .steps-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    gap: 2px; margin-top: 64px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .step-card {
+    background: var(--bg2); padding: 28px 20px;
+    transition: background 0.25s;
+  }
+  .step-card:hover { background: var(--bg3); }
+  .step-card.step-act { border-top: 2px solid var(--red); }
+  .step-num {
+    font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .step-name { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .step-name.act { color: var(--red); }
+  .step-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.6; }
+
+  /* FEATURES GRID */
+  .features-section {
+    padding: 80px 48px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .features-inner { max-width: 1100px; margin: 0 auto; }
+  .features-header {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 60px; align-items: end; margin-bottom: 64px;
+  }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2px; background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .feature-card {
+    background: var(--bg2); padding: 36px 30px; transition: background 0.25s;
+  }
+  .feature-card:hover { background: var(--bg3); }
+  .feature-card.wide { grid-column: span 2; }
+  .feature-icon-wrap {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--red-dim); border: 1px solid var(--border-hover);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .feature-icon { width: 16px; height: 16px; fill: none; stroke: var(--red); stroke-width: 1.8; }
+  .feature-title { font-size: 0.98rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  .feature-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.7; }
+
+  /* EXAMPLE QUERIES */
+  .queries-section { max-width: 1100px; margin: 0 auto; padding: 100px 48px; }
+  .queries-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 56px; }
+  .query-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px 28px; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    text-decoration: none; display: block;
+  }
+  .query-card:hover {
+    border-color: var(--border-hover); background: var(--bg3); transform: translateY(-3px);
+  }
+  .query-tag {
+    font-size: 0.67rem; font-weight: 700; color: var(--red);
+    text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px;
+  }
+  .query-text { font-size: 0.88rem; color: var(--text); line-height: 1.55; font-weight: 500; }
+  .query-arrow { display: inline-block; margin-top: 14px; font-size: 0.76rem; color: var(--text-muted); transition: color 0.2s; }
+  .query-card:hover .query-arrow { color: var(--red); }
+
+  /* MEMO PREVIEW */
+  .memo-section {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 80px 48px;
+  }
+  .memo-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.4fr; gap: 80px; align-items: center; }
+  .memo-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; font-family: var(--font);
+  }
+  .memo-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .memo-title { font-size: 0.78rem; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.06em; }
+  .memo-rec {
+    font-size: 0.68rem; font-weight: 800; padding: 4px 10px;
+    border-radius: 4px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .memo-rec.acquire { background: rgba(40,160,80,0.15); color: #4caf80; border: 1px solid rgba(40,160,80,0.3); }
+  .memo-rec.pass { background: rgba(200,55,58,0.12); color: var(--red); border: 1px solid var(--border-hover); }
+  .memo-rec.review { background: rgba(200,140,40,0.12); color: #c8921a; border: 1px solid rgba(200,140,40,0.3); }
+  .memo-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.8rem; }
+  .memo-row:last-child { border-bottom: none; }
+  .memo-row-label { color: var(--text-muted); }
+  .memo-row-val { color: var(--text); font-weight: 600; }
+  .memo-note { margin-top: 20px; font-size: 0.74rem; color: var(--text-muted); line-height: 1.6; }
+
+  /* CTA BAND */
+  .cta-band {
+    padding: 100px 48px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .cta-band::before {
+    content: '';
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(200,55,58,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-band h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 700; letter-spacing: -0.02em; color: var(--text);
+    margin-bottom: 16px; position: relative;
+  }
+  .cta-band p { color: var(--text-soft); font-size: 1rem; margin-bottom: 40px; position: relative; }
+  .cta-band .hero-actions { position: relative; }
+
+  /* FAQ */
+  .faq-section { max-width: 700px; margin: 0 auto; padding: 100px 48px; }
+  .faq-section .section-heading { max-width: 100%; }
+  .faq-list { margin-top: 56px; border-top: 1px solid var(--border); }
+  .faq-item { border-bottom: 1px solid var(--border); }
+  .faq-q {
+    width: 100%; background: none; border: none; text-align: left;
+    padding: 22px 0; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; cursor: pointer; font-size: 0.92rem; font-weight: 600;
+    color: var(--text); font-family: var(--font); transition: color 0.2s;
+  }
+  .faq-q:hover { color: var(--red); }
+  .faq-q-icon {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 0.8rem; color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .faq-item.open .faq-q-icon {
+    background: var(--red-dim); border-color: var(--border-hover);
+    color: var(--red); transform: rotate(45deg);
+  }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+  .faq-item.open .faq-a { max-height: 320px; }
+  .faq-a-inner { padding-bottom: 22px; font-size: 0.86rem; color: var(--text-soft); line-height: 1.75; }
+
+  /* TECH STACK */
+  .tech-section { border-top: 1px solid var(--border); padding: 56px 48px; }
+  .tech-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 40px; flex-wrap: wrap;
+  }
+  .tech-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; }
+  .tech-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .tech-pill {
+    padding: 7px 15px; border: 1px solid var(--border); border-radius: 100px;
+    font-size: 0.76rem; color: var(--text-soft); background: var(--bg2); font-weight: 500;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .tech-pill:hover { border-color: rgba(255,255,255,0.14); color: var(--text); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border); padding: 38px 48px;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  }
+  .footer-logo { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .footer-links { display: flex; gap: 24px; list-style: none; }
+  .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.76rem; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--text); }
+  .footer-copy { font-size: 0.73rem; color: var(--text-muted); }
+
+  /* FADE IN */
+  .fade-in { opacity: 0; transform: translateY(22px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* MOBILE */
+  @media (max-width: 900px) {
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .nav-links.open {
+      display: flex; flex-direction: column;
+      position: fixed; top: 61px; left: 0; right: 0;
+      background: rgba(12,12,12,0.97); backdrop-filter: blur(14px);
+      padding: 24px; gap: 20px; border-bottom: 1px solid var(--border);
+    }
+    .nav-hamburger { display: flex; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); padding: 24px; }
+    .stat-item:nth-child(2) { border-right: none; }
+    .stat-item:nth-child(3) { border-right: 1px solid var(--border); border-top: 1px solid var(--border); }
+    .stat-item:nth-child(4) { border-top: 1px solid var(--border); }
+    .stat-item { padding: 16px; }
+    .section { padding: 64px 24px; }
+    .features-section { padding: 64px 24px; }
+    .features-header { grid-template-columns: 1fr; gap: 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .feature-card.wide { grid-column: span 1; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .queries-section { padding: 64px 24px; }
+    .queries-grid { grid-template-columns: 1fr; }
+    .memo-section { padding: 64px 24px; }
+    .memo-inner { grid-template-columns: 1fr; gap: 40px; }
+    .cta-band { padding: 64px 24px; }
+    .faq-section { padding: 64px 24px; }
+    .tech-section { padding: 40px 24px; }
+    .tech-inner { flex-direction: column; align-items: flex-start; gap: 20px; }
+    footer { padding: 28px 24px; flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 600px) {
+    .hero { padding: 100px 20px 60px; }
+    .hero-actions { flex-direction: column; width: 100%; }
+    .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="/" class="nav-logo">ScreenScore</a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#queries">Examples</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="/dev-ui/" class="nav-cta">Launch Agent</a></li>
+  </ul>
+  <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span> Agentic Cinema Hackathon &nbsp;&bull;&nbsp; ClickHouse Track</div>
+  <h1>From question<br>to <em>acquisition memo</em><br>in seconds.</h1>
+  <p class="hero-sub">ScreenScore is a Studio Acquisition Analyst. It queries 388,000+ IMDb titles via ClickHouse, benchmarks against recent market comps, and produces a structured ACQUIRE / PASS / FURTHER REVIEW memo — backed by live SQL, not model memory.</p>
+  <div class="hero-actions">
+    <a href="/dev-ui/" class="btn-primary">Launch ScreenScore &rarr;</a>
+    <a href="#pipeline" class="btn-secondary">See the pipeline</a>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item"><span class="stat-num">388K+</span><span class="stat-label">Titles indexed</span></div>
+  <div class="stat-item"><span class="stat-num">817K+</span><span class="stat-label">Actors &amp; directors</span></div>
+  <div class="stat-item"><span class="stat-num">3.4M+</span><span class="stat-label">Roles &amp; credits</span></div>
+  <div class="stat-item"><span class="stat-num">6</span><span class="stat-label">Pipeline steps</span></div>
+</div>
+
+<!-- PIPELINE -->
+<section class="section" id="pipeline">
+  <div class="fade-in">
+    <div class="section-tag">The pipeline</div>
+    <h2 class="section-heading">Six steps. Deterministic.<br><em>Every time.</em></h2>
+    <p class="section-desc">Judges want to see determinism, not a black-box LLM call. Every step runs as a distinct, traceable operation — schema discovery, SQL execution, benchmark retrieval, and artifact generation.</p>
+  </div>
+  <div class="steps-grid fade-in">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <div class="step-name">Discover</div>
+      <div class="step-desc">Calls list_tables via MCP. Confirms schema: movies, actors, directors, roles, genres.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <div class="step-name">Plan</div>
+      <div class="step-desc">States the query plan before writing SQL. Selects tables, columns, and join strategy.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="step-name">Query</div>
+      <div class="step-desc">Executes ClickHouse SQL via run_query (read-only). Retries with corrected SQL on failure.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">04</div>
+      <div class="step-name">Analyze</div>
+      <div class="step-desc">Extracts genre position, director track record, rating trajectory, and cast comps from raw rows.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">05</div>
+      <div class="step-name">Compare</div>
+      <div class="step-desc">Retrieves recent streaming and box office benchmarks. Frames title vs. genre average and recent slate.</div>
+    </div>
+    <div class="step-card step-act">
+      <div class="step-num">06</div>
+      <div class="step-name act">Decide</div>
+      <div class="step-desc">Calls generate_acquisition_memo. Saves a signed markdown + JSON memo as a downloadable artifact.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="features-inner">
+    <div class="features-header fade-in">
+      <div>
+        <div class="section-tag">Features</div>
+        <h2 class="section-heading">Enterprise friction,<br><em>actually solved.</em></h2>
+      </div>
+      <p class="section-desc" style="align-self:end;">Not a chat-with-a-database demo. ScreenScore produces a structured decision artifact at the end of every acquisition workflow — the output an analyst actually needs.</p>
+    </div>
+    <div class="features-grid fade-in">
+      <div class="feature-card wide">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div class="feature-title">Acquisition memos as artifacts</div>
+        <div class="feature-desc">The DECIDE step generates a structured markdown + JSON memo saved to the ADK artifact store. Every memo contains recommendation, rationale, comparable titles, genre benchmark, and risk flags — ready to download and share.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="feature-title">ClickHouse at columnar speed</div>
+        <div class="feature-desc">Sub-second aggregations on 3.4M+ rows. MergeTree indexes, window functions, and ARRAY JOIN — all used automatically.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div class="feature-title">Market comp benchmarks</div>
+        <div class="feature-desc">Synthetic streaming and box office data for 19 recent titles supplements the historical IMDb dataset for comparative reasoning.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div class="feature-title">Read-only governance</div>
+        <div class="feature-desc">run_query is the only data-writing surface — and it only executes SELECT statements. No INSERT, UPDATE, DELETE, or DDL is possible.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div class="feature-title">Analyst vs. executive view</div>
+        <div class="feature-desc">Full SQL output for analysts. Ask for "executive view" to receive only the memo artifact — no raw data tables.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon-wrap">
+          <svg class="feature-icon" viewBox="0 0 24 24"><path d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="feature-title">MCP-native SQL</div>
+        <div class="feature-desc">Backed by the official mcp-clickhouse MCP server. Schema discovery and query execution are standard MCP tool calls — auditable and swappable.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMO PREVIEW -->
+<section class="memo-section">
+  <div class="memo-inner">
+    <div class="fade-in">
+      <div class="section-tag">Output artifact</div>
+      <h2 class="section-heading">A memo, not<br>just an <em>answer.</em></h2>
+      <p class="section-desc" style="margin-bottom: 24px;">The final step produces a downloadable acquisition memo — structured, sourced, and signed with a timestamp. Ready to share with an exec without copy-pasting a chat window.</p>
+      <a href="/dev-ui/" class="btn-primary" style="display:inline-flex;">Generate a memo &rarr;</a>
+    </div>
+    <div class="fade-in">
+      <div class="memo-card">
+        <div class="memo-header">
+          <span class="memo-title">Acquisition Memo &mdash; Anora (2024)</span>
+          <span class="memo-rec acquire">Acquire</span>
+        </div>
+        <div class="memo-row"><span class="memo-row-label">Generated</span><span class="memo-row-val">2026-08-17 21:00 UTC</span></div>
+        <div class="memo-row"><span class="memo-row-label">Genre benchmark</span><span class="memo-row-val">Drama/Romance &mdash; avg 6.9 / 14,200 titles</span></div>
+        <div class="memo-row"><span class="memo-row-label">Director track record</span><span class="memo-row-val">Sean Baker &mdash; avg 7.4 over 8 credits</span></div>
+        <div class="memo-row"><span class="memo-row-label">Streaming (first 30d)</span><span class="memo-row-val">8.3M views &mdash; Neon / Hulu</span></div>
+        <div class="memo-row"><span class="memo-row-label">Comparable titles</span><span class="memo-row-val">Past Lives (7.9), Aftersun (7.7), Tangerine (7.1)</span></div>
+        <div class="memo-row"><span class="memo-row-label">Risk flags</span><span class="memo-row-val">1 &mdash; Limited theatrical window</span></div>
+        <div class="memo-note">All figures sourced from ClickHouse IMDb dataset and synthetic performance benchmarks. This memo does not constitute legal or financial advice.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXAMPLE QUERIES -->
+<section class="queries-section" id="queries">
+  <div class="fade-in">
+    <div class="section-tag">Example workflows</div>
+    <h2 class="section-heading">Acquisition questions it<br><em>answers completely.</em></h2>
+  </div>
+  <div class="queries-grid fade-in">
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Acquisition Analysis</div>
+      <div class="query-text">Run a full acquisition analysis on Anatomy of a Fall &mdash; director track record, genre comp, recommendation.</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Slate Comparison</div>
+      <div class="query-text">Show all A24-distributed titles with IMDb rating above 7.5 since 2018 and their genre breakdown.</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Director Diligence</div>
+      <div class="query-text">Compare Nolan, Villeneuve, and Fincher by average rating, genre range, and consistency over 10+ films.</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Genre Trend</div>
+      <div class="query-text">How has the average IMDb rating of psychological thrillers trended from 2000 to 2024? Is the genre rising or declining?</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Risk Assessment</div>
+      <div class="query-text">Which genres have the widest variance in ratings? Where is acquisition risk highest?</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+    <a href="/dev-ui/" class="query-card">
+      <div class="query-tag">Comps Report</div>
+      <div class="query-text">Find the closest historical comps to Anora &mdash; same genre, similar era, high critical rating &mdash; and produce an acquisition memo.</div>
+      <span class="query-arrow">Try this &rarr;</span>
+    </a>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="cta-band">
+  <h2 class="fade-in">Real decisions.<br>Real data.</h2>
+  <p class="fade-in">388,000 titles. Six deterministic steps. One downloadable memo.</p>
+  <div class="hero-actions fade-in">
+    <a href="/dev-ui/" class="btn-primary">Launch ScreenScore &rarr;</a>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="fade-in">
+    <div class="section-tag">FAQ</div>
+    <h2 class="section-heading">Frequently asked<br><em>questions.</em></h2>
+  </div>
+  <div class="faq-list fade-in">
+    <div class="faq-item">
+      <button class="faq-q" data-faq>
+        What does "acquisition memo" mean here?
+        <span class="faq-q-icon">+</span>
+      </button>
+      <div class="faq-a"><div class="faq-a-inner">At the end of every full acquisition workflow, ScreenScore calls <code>generate_acquisition_memo</code> and saves a markdown + JSON file to the ADK artifact store. The memo contains: recommendation (ACQUIRE / PASS / FURTHER REVIEW), rationale, genre benchmark, comparable titles with ratings, and specific risk flags. It can be downloaded directly from the chat interface.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-faq>
+        Can it fabricate data?
+        <span class="faq-q-icon">+</span>
+      </button>
+      <div class="faq-a"><div class="faq-a-inner">No. Every figure in the memo is sourced from a live ClickHouse query or the synthetic performance benchmark table. If a field is not present in the database (box office revenue, streaming rights, budget), the agent states this explicitly. It does not substitute model training data for missing facts.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-faq>
+        How is the database access governed?
+        <span class="faq-q-icon">+</span>
+      </button>
+      <div class="faq-a"><div class="faq-a-inner">The MCP toolset is configured with a strict <code>tool_filter</code> allowing only <code>run_query</code>, <code>list_databases</code>, and <code>list_tables</code>. The <code>run_query</code> tool in mcp-clickhouse executes SELECT statements only &mdash; no write operations are possible through this interface. The system prompt also instructs the agent to refuse any modification requests.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-faq>
+        What is the "recent performance" data?
+        <span class="faq-q-icon">+</span>
+      </button>
+      <div class="faq-a"><div class="faq-a-inner">The IMDb ClickHouse dataset does not include box office revenue or streaming view counts. ScreenScore adds a synthetic benchmark table covering 19 recent titles (2022&ndash;2024) with estimated streaming views (first 30 days) and opening week box office. This lets the agent do comparative reasoning &mdash; new title vs. recent acquisition comps &mdash; closer to real M&E ops workflows.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" data-faq>
+        What powers the agent?
+        <span class="faq-q-icon">+</span>
+      </button>
+      <div class="faq-a"><div class="faq-a-inner">Google ADK (Agent Development Kit) orchestrates the six-step pipeline. Gemini 3.5 Flash Lite handles reasoning. ClickHouse SQL Playground is the data backend, accessed via the official mcp-clickhouse MCP server. The application is deployed on Google Cloud Run with a single instance for session consistency.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<div class="tech-section">
+  <div class="tech-inner">
+    <span class="tech-label">Powered by</span>
+    <div class="tech-pills">
+      <span class="tech-pill">Google Gemini 3.5 Flash Lite</span>
+      <span class="tech-pill">Google ADK</span>
+      <span class="tech-pill">ClickHouse MCP</span>
+      <span class="tech-pill">IMDb Dataset</span>
+      <span class="tech-pill">Cloud Run</span>
+      <span class="tech-pill">Python 3.11</span>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">ScreenScore</span>
+  <ul class="footer-links">
+    <li><a href="https://agentic-cinema.devpost.com/" target="_blank">Hackathon</a></li>
+    <li><a href="https://clickhouse.com/" target="_blank">ClickHouse</a></li>
+    <li><a href="https://cloud.google.com/products/agent-development-kit" target="_blank">Google ADK</a></li>
+    <li><a href="/dev-ui/">Launch Agent</a></li>
+  </ul>
+  <span class="footer-copy">Built for Agentic Cinema Hackathon &mdash; ClickHouse Track</span>
+</footer>
+
+<script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  hamburger.addEventListener('click', () => navLinks.classList.toggle('open'));
+  navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => navLinks.classList.remove('open')));
+
+  document.querySelectorAll('[data-faq]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
