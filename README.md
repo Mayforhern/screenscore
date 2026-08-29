@@ -33,27 +33,65 @@ The agent does not answer questions from model memory. Every figure is sourced f
 
 ## Architecture
 
+```mermaid
+graph TD
+    User["👤 <b>User</b><br/><i>Natural Language Query</i>"]
+
+    subgraph CloudRun["☁️ Google Cloud Run"]
+        direction TB
+        RateLimiter["🛡️ <b>Rate Limiter</b><br/><i>4 RPM sliding window</i>"]
+        Agent["🤖 <b>ADK Agent</b><br/><b>Gemini 3.1 Flash Lite</b>"]
+        Pipeline["⚙️ <b>Pipeline Engine</b><br/><i>8-step state machine</i>"]
+        Tools["🛠️ <b>Custom Tools</b><br/><i>memo, chart, table</i>"]
+    end
+
+    subgraph DataLayer["🗄️ Data Layer"]
+        direction TB
+        MCPClickHouse["⚡ <b>mcp-clickhouse</b><br/><code>run_query</code> | <code>list_tables</code>"]
+        subgraph ClickHouse["ClickHouse IMDb Database"]
+            direction TB
+            Core["🎬 <b>imdb.movies</b> (388K) &nbsp;|&nbsp; 🏷️ <b>imdb.genres</b>"]
+            People["🎭 <b>imdb.actors</b> (817K) &nbsp;|&nbsp; 📜 <b>imdb.roles</b> (3.4M) &nbsp;|&nbsp; 🎬 <b>imdb.directors</b>"]
+        end
+    end
+
+    subgraph Output["📄 Deliverables"]
+        direction TB
+        Memo["📊 <b>Acquisition Memo</b><br/><i>ACQUIRE / PASS / FURTHER_REVIEW</i>"]
+        Artifact["🌐 <b>HTML Artifact</b><br/><i>Downloadable Report</i>"]
+    end
+
+    %% Data Flow
+    User -->|"1. Submit Query"| RateLimiter
+    RateLimiter --> Agent
+    Agent <-->|"2. Enforce Workflow"| Pipeline
+    Agent -->|"3. Execute SQL"| MCPClickHouse
+    MCPClickHouse -->|"4. Query Tables"| Core
+    MCPClickHouse -->|"4. Query Tables"| People
+    Agent -->|"5. Generate Output"| Tools
+    Tools --> Memo
+    Memo --> Artifact
+    Artifact -->|"6. Deliver Results"| User
+
+    %% Styling
+    style User fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC
+    style CloudRun fill:#0F172A,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
+    style Agent fill:#2563EB,stroke:#60A5FA,stroke-width:2px,color:#FFFFFF
+    style RateLimiter fill:#334155,stroke:#64748B,color:#F8FAFC
+    style Pipeline fill:#334155,stroke:#64748B,color:#F8FAFC
+    style Tools fill:#334155,stroke:#64748B,color:#F8FAFC
+
+    style DataLayer fill:#0F172A,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
+    style MCPClickHouse fill:#D97706,stroke:#FBBF24,stroke-width:2px,color:#FFFFFF
+    style ClickHouse fill:#1E293B,stroke:#F59E0B,color:#F8FAFC
+    style Core fill:#334155,stroke:#475569,color:#F8FAFC
+    style People fill:#334155,stroke:#475569,color:#F8FAFC
+
+    style Output fill:#0F172A,stroke:#10B981,stroke-width:2px,color:#F8FAFC
+    style Memo fill:#059669,stroke:#34D399,stroke-width:2px,color:#FFFFFF
+    style Artifact fill:#10B981,stroke:#6EE7B7,color:#FFFFFF
 ```
-User (natural language)
-        |
-        v
-  Google ADK Agent (Gemini 3.1 Flash Lite) — single agent, all tools
-        |
-        |--- list_tables / run_query -----> ClickHouse MCP Server (mcp-clickhouse)
-        |                                          |
-        |                                   ClickHouse SQL Playground
-        |                                   (IMDb: 388K movies, 817K actors, 3.4M roles)
-        |
-        |--- get_title_performance -------> In-process synthetic benchmark table
-        |                                   (streaming views, opening week for 19 recent titles)
-        |
-        |--- generate_acquisition_memo --> ADK Artifact Store
-        |                                   (markdown + JSON memo, downloadable)
-        |
-        |--- format_table / generate_chart -> Formatted output
-        v
-  Response + Downloadable Memo Artifact
-```
+
 
 **Stack:**
 
