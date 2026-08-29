@@ -1,0 +1,33 @@
+steps:
+  # 1. Build container image using Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/screenscore:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/screenscore:latest', '.']
+
+  # 2. Push container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/screenscore:$COMMIT_SHA']
+
+  # 3. Deploy container image to Google Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'screenscore'
+      - '--image=gcr.io/$PROJECT_ID/screenscore:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--port=8000'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--timeout=600'
+      - '--max-instances=1'
+      - '--set-env-vars=GOOGLE_API_KEY=${_GOOGLE_API_KEY},CLICKHOUSE_HOST=sql-clickhouse.clickhouse.com,CLICKHOUSE_PORT=8443,CLICKHOUSE_USER=demo,CLICKHOUSE_PASSWORD=${_CLICKHOUSE_PASSWORD},CLICKHOUSE_SECURE=true,CLICKHOUSE_VERIFY=true,GEMINI_MODEL=gemini-3.1-flash-lite'
+
+substitutions:
+  _GOOGLE_API_KEY: ''
+  _CLICKHOUSE_PASSWORD: ''
+
+images:
+  - 'gcr.io/$PROJECT_ID/screenscore:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/screenscore:latest'

@@ -301,10 +301,12 @@ screenscore/
 │   ├── pipeline.py        # Pipeline state machine with query lifecycle tracking
 │   └── rate_limiter.py    # Async sliding-window rate limiter for Gemini API
 ├── main.py                # FastAPI app — landing page + ADK routes
+├── cloudbuild.yaml        # Google Cloud Build CI/CD auto-deploy pipeline
 ├── Dockerfile
 ├── requirements.txt
 ├── .env.example
 └── README.md
+
 ```
 
 ---
