@@ -23,7 +23,7 @@ adk_app = get_fast_api_app(
     host="0.0.0.0",
     port=int(os.environ.get("PORT", "8000")),
     trace_to_cloud=False,
-    auto_create_session=True,
+    auto_create_session=False,
 )
 
 _INDEX_PATH = _DIR / "screenscore" / "templates" / "index.html"

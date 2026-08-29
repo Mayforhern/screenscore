@@ -72,8 +72,7 @@ _ch_env: dict[str, str] = {
 _mcp_python: str = sys.executable
 
 # W4: Model name from env var so a typo doesn't crash the whole import
-# gemini-3.6-flash has only 20 RPD on free tier — use gemini-3.5-flash (1,500 RPD, 5 RPM)
-_MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+_MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 logger.info("Using Gemini model: %s (set via GEMINI_MODEL env var)", _MODEL_NAME)
 
 _model = Gemini(
