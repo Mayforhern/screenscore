@@ -34,64 +34,52 @@ The agent does not answer questions from model memory. Every figure is sourced f
 ## Architecture
 
 ```mermaid
-graph TD
-    User["👤 <b>User</b><br/><i>Natural Language Query</i>"]
-
-    subgraph CloudRun["☁️ Google Cloud Run"]
-        direction TB
-        RateLimiter["🛡️ <b>Rate Limiter</b><br/><i>4 RPM sliding window</i>"]
-        Agent["🤖 <b>ADK Agent</b><br/><b>Gemini 3.1 Flash Lite</b>"]
-        Pipeline["⚙️ <b>Pipeline Engine</b><br/><i>8-step state machine</i>"]
-        Tools["🛠️ <b>Custom Tools</b><br/><i>memo, chart, table</i>"]
+graph TB
+    User["User<br/>(Natural Language)"]
+    
+    subgraph CloudRun["Google Cloud Run"]
+        Agent["ADK Agent<br/>Gemini 3.1 Flash Lite"]
+        RateLimiter["Rate Limiter<br/>4 RPM sliding window"]
+        Pipeline["Pipeline State Machine<br/>8-step deterministic"]
+        Tools["Custom Tools<br/>memo, chart, table"]
     end
-
-    subgraph DataLayer["🗄️ Data Layer"]
-        direction TB
-        MCPClickHouse["⚡ <b>mcp-clickhouse</b><br/><code>run_query</code> | <code>list_tables</code>"]
-        subgraph ClickHouse["ClickHouse IMDb Database"]
-            direction TB
-            Core["🎬 <b>imdb.movies</b> (388K) &nbsp;|&nbsp; 🏷️ <b>imdb.genres</b>"]
-            People["🎭 <b>imdb.actors</b> (817K) &nbsp;|&nbsp; 📜 <b>imdb.roles</b> (3.4M) &nbsp;|&nbsp; 🎬 <b>imdb.directors</b>"]
-        end
+    
+    subgraph MCP["MCP Server"]
+        MCPClickHouse["mcp-clickhouse<br/>run_query, list_tables, list_databases"]
     end
-
-    subgraph Output["📄 Deliverables"]
-        direction TB
-        Memo["📊 <b>Acquisition Memo</b><br/><i>ACQUIRE / PASS / FURTHER_REVIEW</i>"]
-        Artifact["🌐 <b>HTML Artifact</b><br/><i>Downloadable Report</i>"]
+    
+    subgraph ClickHouse["ClickHouse SQL Playground"]
+        Movies["imdb.movies<br/>388K titles"]
+        Actors["imdb.actors<br/>817K actors"]
+        Roles["imdb.roles<br/>3.4M roles"]
+        Genres["imdb.genres"]
+        Directors["imdb.directors"]
     end
-
-    %% Data Flow
-    User -->|"1. Submit Query"| RateLimiter
-    RateLimiter --> Agent
-    Agent <-->|"2. Enforce Workflow"| Pipeline
-    Agent -->|"3. Execute SQL"| MCPClickHouse
-    MCPClickHouse -->|"4. Query Tables"| Core
-    MCPClickHouse -->|"4. Query Tables"| People
-    Agent -->|"5. Generate Output"| Tools
+    
+    subgraph Output["Output"]
+        Memo["Acquisition Memo<br/>ACQUIRE / PASS / FURTHER_REVIEW"]
+        Artifact["HTML Artifact<br/>Downloadable"]
+    end
+    
+    User -->|"Evaluate Anora for acquisition"| Agent
+    Agent --> RateLimiter
+    Agent --> Pipeline
+    Agent --> Tools
+    Agent --> MCPClickHouse
+    MCPClickHouse -->|"SELECT queries"| Movies
+    MCPClickHouse --> Actors
+    MCPClickHouse --> Roles
+    MCPClickHouse --> Genres
+    MCPClickHouse --> Directors
     Tools --> Memo
     Memo --> Artifact
-    Artifact -->|"6. Deliver Results"| User
-
-    %% Styling
-    style User fill:#1E293B,stroke:#475569,stroke-width:2px,color:#F8FAFC
-    style CloudRun fill:#0F172A,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
-    style Agent fill:#2563EB,stroke:#60A5FA,stroke-width:2px,color:#FFFFFF
-    style RateLimiter fill:#334155,stroke:#64748B,color:#F8FAFC
-    style Pipeline fill:#334155,stroke:#64748B,color:#F8FAFC
-    style Tools fill:#334155,stroke:#64748B,color:#F8FAFC
-
-    style DataLayer fill:#0F172A,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
-    style MCPClickHouse fill:#D97706,stroke:#FBBF24,stroke-width:2px,color:#FFFFFF
-    style ClickHouse fill:#1E293B,stroke:#F59E0B,color:#F8FAFC
-    style Core fill:#334155,stroke:#475569,color:#F8FAFC
-    style People fill:#334155,stroke:#475569,color:#F8FAFC
-
-    style Output fill:#0F172A,stroke:#10B981,stroke-width:2px,color:#F8FAFC
-    style Memo fill:#059669,stroke:#34D399,stroke-width:2px,color:#FFFFFF
-    style Artifact fill:#10B981,stroke:#6EE7B7,color:#FFFFFF
+    Agent -->|"Response + Memo"| User
+    
+    style Agent fill:#4285F4,color:#fff
+    style MCPClickHouse fill:#FFA000,color:#fff
+    style ClickHouse fill:#FAD961,color:#000
+    style Memo fill:#34A853,color:#fff
 ```
-
 
 **Stack:**
 
@@ -108,7 +96,86 @@ graph TD
 
 ## Eight-Step Pipeline
 
-The agent follows a deterministic pipeline for every acquisition request:
+```mermaid
+graph TD
+    Start["User Request"]
+    
+    subgraph Step1["Step 1 — SCHEMA"]
+        S1A["init_pipeline_state()"]
+        S1B["get_schema_info()"]
+    end
+    
+    subgraph Step2["Step 2 — DISCOVER"]
+        S2A["list_tables()"]
+    end
+    
+    subgraph Step3["Step 3 — PLAN"]
+        S3A["Print query plan<br/>before SQL"]
+    end
+    
+    subgraph Step4["Step 4 — QUERIES"]
+        S4A["plan_query()"]
+        S4B["run_query()<br/>via MCP"]
+        S4C["execute_query()"]
+        S4D{"Success?"}
+        S4E["diagnose_query_failure()"]
+        S4F["retry_query()"]
+    end
+    
+    subgraph Step5["Step 5 — ANALYZE"]
+        S5A["record_evidence()"]
+        S5B["classify_candidate()"]
+        S5C["validate_claim()"]
+    end
+    
+    subgraph Step6["Step 6 — COMPARE"]
+        S6A["get_title_performance()"]
+    end
+    
+    subgraph Step7["Step 7 — VALIDATE"]
+        S7A["validate_analysis_constraints()"]
+        S7B["mark_validation_complete()"]
+    end
+    
+    subgraph Step8["Step 8 — DECIDE"]
+        S8A["mark_decision_complete()"]
+        S8B["generate_acquisition_memo()"]
+        S8C["generate_html_memo()"]
+        S8D["mark_memo_generated()"]
+    end
+    
+    Start --> S1A
+    S1A --> S1B
+    S1B --> S2A
+    S2A --> S3A
+    S3A --> S4A
+    S4A --> S4B
+    S4B --> S4C
+    S4C --> S4D
+    S4D -->|"Yes"| S5A
+    S4D -->|"No"| S4E
+    S4E --> S4F
+    S4F --> S4B
+    S5A --> S5B
+    S5B --> S5C
+    S5C --> S6A
+    S6A --> S7A
+    S7A --> S7B
+    S7B --> S8A
+    S8A --> S8B
+    S8B --> S8C
+    S8C --> S8D
+    S8D --> End["PIPELINE COMPLETE"]
+    
+    style Step1 fill:#E8F0FE,color:#000
+    style Step2 fill:#E8F0FE,color:#000
+    style Step3 fill:#E8F0FE,color:#000
+    style Step4 fill:#FCE8E6,color:#000
+    style Step5 fill:#E6F4EA,color:#000
+    style Step6 fill:#FFF8E1,color:#000
+    style Step7 fill:#F3E8FD,color:#000
+    style Step8 fill:#E8F5E9,color:#000
+```
 
 | Step | Name | What happens |
 |---|---|---|
@@ -124,6 +191,25 @@ The agent follows a deterministic pipeline for every acquisition request:
 ---
 
 ## Anti-Hallucination Enforcement
+
+```mermaid
+graph LR
+    A["run_query()"] -->|"Raw rows"| B{"Self-Audit"}
+    B -->|"Title in raw?"| C{"Year match?"}
+    C -->|"Yes"| D{"Rank match?"}
+    C -->|"No"| E["REMOVE title"]
+    D -->|"Yes"| F{"Genre match?"}
+    D -->|"No"| E
+    F -->|"Yes"| G["Include in recommendations"]
+    F -->|"No"| E
+    E --> H["Print audit table"]
+    G --> H
+    
+    style A fill:#4285F4,color:#fff
+    style B fill:#FBBC04,color:#000
+    style E fill:#EA4335,color:#fff
+    style G fill:#34A853,color:#fff
+```
 
 The agent enforces strict data provenance at every step:
 
