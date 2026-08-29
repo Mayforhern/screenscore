@@ -232,27 +232,38 @@
   .section-heading em { font-style: italic; color: var(--red); }
   .section-desc { color: var(--text-soft); font-size: 1rem; line-height: 1.75; max-width: 520px; }
 
-  /* PIPELINE (6 STEPS) */
+  /* PIPELINE (8 STEPS) */
   .steps-grid {
-    display: grid; grid-template-columns: repeat(6, 1fr);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 2px; margin-top: 64px;
     background: var(--border);
     border: 1px solid var(--border);
     border-radius: var(--radius); overflow: hidden;
   }
   .step-card {
-    background: var(--bg2); padding: 28px 20px;
+    background: var(--bg2); padding: 28px 24px;
     transition: background 0.25s;
+    min-width: 0;
+    word-break: break-word;
   }
   .step-card:hover { background: var(--bg3); }
-  .step-card.step-act { border-top: 2px solid var(--red); }
   .step-num {
     font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
     letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px;
   }
-  .step-name { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-  .step-name.act { color: var(--red); }
-  .step-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.6; }
+  .step-name { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .step-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+  .step-desc code {
+    font-family: 'JetBrains Mono', monospace, sans-serif;
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: var(--text);
+    word-break: break-all;
+  }
+
 
   /* FEATURES GRID */
   .features-section {
@@ -486,48 +497,59 @@
   <div class="stat-item"><span class="stat-num">388K+</span><span class="stat-label">Titles indexed</span></div>
   <div class="stat-item"><span class="stat-num">817K+</span><span class="stat-label">Actors &amp; directors</span></div>
   <div class="stat-item"><span class="stat-num">3.4M+</span><span class="stat-label">Roles &amp; credits</span></div>
-  <div class="stat-item"><span class="stat-num">6</span><span class="stat-label">Pipeline steps</span></div>
+  <div class="stat-item"><span class="stat-num">8</span><span class="stat-label">Pipeline steps</span></div>
 </div>
 
 <!-- PIPELINE -->
 <section class="section" id="pipeline">
   <div class="fade-in">
     <div class="section-tag">The pipeline</div>
-    <h2 class="section-heading">Six steps. Deterministic.<br><em>Every time.</em></h2>
+    <h2 class="section-heading">Eight steps. Deterministic.<br><em>Every time.</em></h2>
     <p class="section-desc">Judges want to see determinism, not a black-box LLM call. Every step runs as a distinct, traceable operation — schema discovery, SQL execution, benchmark retrieval, and artifact generation.</p>
   </div>
   <div class="steps-grid fade-in">
     <div class="step-card">
       <div class="step-num">01</div>
-      <div class="step-name">Discover</div>
-      <div class="step-desc">Calls list_tables via MCP. Confirms schema: movies, actors, directors, roles, genres.</div>
+      <div class="step-name">Schema</div>
+      <div class="step-desc">Calls <code>init_pipeline_state()</code> + <code>get_schema_info()</code> to verify schema availability.</div>
     </div>
     <div class="step-card">
       <div class="step-num">02</div>
+      <div class="step-name">Discover</div>
+      <div class="step-desc">Calls <code>list_tables</code> via MCP. Confirms schema: movies, actors, directors, roles, genres.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
       <div class="step-name">Plan</div>
       <div class="step-desc">States the query plan before writing SQL. Selects tables, columns, and join strategy.</div>
     </div>
     <div class="step-card">
-      <div class="step-num">03</div>
+      <div class="step-num">04</div>
       <div class="step-name">Query</div>
-      <div class="step-desc">Executes ClickHouse SQL via run_query (read-only). Retries with corrected SQL on failure.</div>
+      <div class="step-desc">Executes ClickHouse SQL via <code>run_query</code> (read-only). Retries with corrected SQL on failure.</div>
     </div>
     <div class="step-card">
-      <div class="step-num">04</div>
+      <div class="step-num">05</div>
       <div class="step-name">Analyze</div>
       <div class="step-desc">Extracts genre position, director track record, rating trajectory, and cast comps from raw rows.</div>
     </div>
     <div class="step-card">
-      <div class="step-num">05</div>
+      <div class="step-num">06</div>
       <div class="step-name">Compare</div>
       <div class="step-desc">Retrieves recent streaming and box office benchmarks. Frames title vs. genre average and recent slate.</div>
     </div>
-    <div class="step-card step-act">
-      <div class="step-num">06</div>
-      <div class="step-name act">Decide</div>
-      <div class="step-desc">Calls generate_acquisition_memo. Saves a signed markdown + JSON memo as a downloadable artifact.</div>
+    <div class="step-card">
+      <div class="step-num">07</div>
+      <div class="step-name">Validate</div>
+      <div class="step-desc">Calls <code>validate_analysis_constraints()</code>. Enforces all user constraints and data provenance rules.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">08</div>
+      <div class="step-name">Decide</div>
+      <div class="step-desc">Calls <code>generate_acquisition_memo</code>. Saves a signed markdown + JSON memo as a downloadable artifact.</div>
     </div>
   </div>
+
 </section>
 
 <!-- FEATURES -->
@@ -657,7 +679,7 @@
 <!-- CTA BAND -->
 <section class="cta-band">
   <h2 class="fade-in">Real decisions.<br>Real data.</h2>
-  <p class="fade-in">388,000 titles. Six deterministic steps. One downloadable memo.</p>
+  <p class="fade-in">388,000 titles. Eight deterministic steps. One downloadable memo.</p>
   <div class="hero-actions fade-in">
     <a href="/dev-ui/" class="btn-primary">Launch ScreenScore &rarr;</a>
   </div>
@@ -703,7 +725,7 @@
         What powers the agent?
         <span class="faq-q-icon">+</span>
       </button>
-      <div class="faq-a"><div class="faq-a-inner">Google ADK (Agent Development Kit) orchestrates the six-step pipeline. Gemini 3.5 Flash Lite handles reasoning. ClickHouse SQL Playground is the data backend, accessed via the official mcp-clickhouse MCP server. The application is deployed on Google Cloud Run with a single instance for session consistency.</div></div>
+      <div class="faq-a"><div class="faq-a-inner">Google ADK (Agent Development Kit) orchestrates the eight-step pipeline. Gemini 3.1 Flash Lite handles reasoning. ClickHouse SQL Playground is the data backend, accessed via the official mcp-clickhouse MCP server. The application is deployed on Google Cloud Run with a single instance for session consistency.</div></div>
     </div>
   </div>
 </section>
@@ -713,7 +735,7 @@
   <div class="tech-inner">
     <span class="tech-label">Powered by</span>
     <div class="tech-pills">
-      <span class="tech-pill">Google Gemini 3.5 Flash Lite</span>
+      <span class="tech-pill">Google Gemini 3.1 Flash Lite</span>
       <span class="tech-pill">Google ADK</span>
       <span class="tech-pill">ClickHouse MCP</span>
       <span class="tech-pill">IMDb Dataset</span>
