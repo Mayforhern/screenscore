@@ -8,6 +8,8 @@ Built for the [Agentic Cinema: The Blockbuster Hackathon](https://agentic-cinema
 
 ## What It Does
 
+![ScreenScore — Dev UI](screenscore/static/image.png)
+
 ScreenScore is a Studio Acquisition Analyst agent. It evaluates film and TV titles for acquisition by executing a deterministic eight-step pipeline against 388K+ IMDb titles in ClickHouse, then produces a structured acquisition memo with a clear recommendation.
 
 **This is the workflow:**
