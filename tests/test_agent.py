@@ -28,13 +28,9 @@ def test_root_agent_has_model():
     assert root_agent.model is not None
 
 
-def test_root_agent_has_sub_agents():
-    """Root agent must expose the 4 sub-agents instead of a flat tool list."""
-    sub_names = {a.name for a in root_agent.sub_agents}
-    assert "schema_agent" in sub_names
-    assert "query_agent" in sub_names
-    assert "evidence_agent" in sub_names
-    assert "decision_agent" in sub_names
+def test_root_agent_has_no_sub_agents():
+    """Root agent executes the pipeline directly — no sub-agent delegation."""
+    assert len(root_agent.sub_agents) == 0
 
 
 def test_schema_agent_tools():

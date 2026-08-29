@@ -74,7 +74,7 @@ MODEL_STATUS_UNAVAILABLE = "unavailable"
 DEFAULT_MAX_QUERIES = 20
 DEFAULT_MAX_RETRIES_PER_QUERY = 2
 DEFAULT_MAX_FOLLOW_UP_ROUNDS = 3
-DEFAULT_MAX_MODEL_RETRIES = 3
+DEFAULT_MAX_MODEL_RETRIES = 10
 
 
 def _get_pipeline(state: dict) -> dict[str, Any]:
@@ -112,7 +112,7 @@ def _default_pipeline_state() -> dict[str, Any]:
         "quota_errors": [],
         "model_retry_count": 0,
         "last_model_error": None,
-        "model_retry_after_seconds": None,
+        "model_retry_after_seconds": 65.0,
         "audit_trail": [],
         "evidence_items": {},
         "evidence_claims": {},

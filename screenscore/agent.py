@@ -9,6 +9,8 @@ from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.genai import types
 from mcp import StdioServerParameters
 
+from .rate_limiter import gemini_limiter
+
 from .prompt import (
     ORCHESTRATOR_PROMPT,
     SCHEMA_AGENT_PROMPT,
@@ -70,12 +72,26 @@ _ch_env: dict[str, str] = {
 _mcp_python: str = sys.executable
 
 # W4: Model name from env var so a typo doesn't crash the whole import
-_MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite-preview-06-17")
+# gemini-3.6-flash has only 20 RPD on free tier — use gemini-3.5-flash (1,500 RPD, 5 RPM)
+_MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+logger.info("Using Gemini model: %s (set via GEMINI_MODEL env var)", _MODEL_NAME)
 
 _model = Gemini(
     model=_MODEL_NAME,
-    retry_options=types.HttpRetryOptions(attempts=5, initial_delay=2.0, max_delay=30.0),
+    retry_options=types.HttpRetryOptions(attempts=3, initial_delay=15.0, max_delay=60.0),
 )
+
+# Inject rate limiting into the model's generate_content_async
+_orig_gen = _model.generate_content_async
+
+async def _rate_limited_gen(*args, **kwargs):
+    waited = await gemini_limiter.acquire()
+    if waited > 0:
+        logger.info("Rate limiter: waited %.1fs for request slot", waited)
+    async for chunk in _orig_gen(*args, **kwargs):
+        yield chunk
+
+object.__setattr__(_model, 'generate_content_async', _rate_limited_gen)
 
 # W5: MCP toolset failure is logged loudly and gracefully handled
 _mcp_toolset: McpToolset | None = None
@@ -122,6 +138,8 @@ _QUERY_TOOLS = [
     plan_follow_up_queries,
     log_query_metadata,
     check_terminal_conditions,
+    update_step,
+    update_research_status,
     update_comparable_titles_status,
     record_model_error,
     check_quota_status,
@@ -138,6 +156,9 @@ _EVIDENCE_TOOLS = [
     format_table,
     generate_chart,
     get_title_performance,
+    update_step,
+    update_comparable_titles_status,
+    get_pipeline_status,
 ]
 
 _DECISION_TOOLS = [
@@ -148,6 +169,10 @@ _DECISION_TOOLS = [
     generate_html_memo,
     mark_memo_generated,
     check_terminal_conditions,
+    update_step,
+    update_research_status,
+    update_comparable_titles_status,
+    mark_analysis_incomplete,
     get_pipeline_status,
 ]
 
@@ -206,8 +231,49 @@ decision_agent = Agent(
 )
 
 # ---------------------------------------------------------------------------
-# Root orchestrator — delegates to sub-agents via transfer_to_agent
+# Root orchestrator — has direct database access + sub-agents
 # ---------------------------------------------------------------------------
+
+_ROOT_TOOLS = [
+    plan_query,
+    execute_query,
+    retry_query,
+    register_follow_up,
+    diagnose_query_failure,
+    plan_follow_up_queries,
+    log_query_metadata,
+    check_terminal_conditions,
+    update_step,
+    update_research_status,
+    update_comparable_titles_status,
+    record_model_error,
+    check_quota_status,
+    mark_analysis_incomplete,
+    get_pipeline_status,
+    init_pipeline_state,
+    get_schema_info,
+    record_evidence,
+    validate_claim,
+    classify_candidate,
+    get_evidence_status,
+    get_audit_summary,
+    format_table,
+    generate_chart,
+    get_title_performance,
+    validate_analysis_constraints,
+    mark_validation_complete,
+    mark_decision_complete,
+    generate_acquisition_memo,
+    generate_html_memo,
+    mark_memo_generated,
+]
+
+# Attach MCP toolset to root agent AND query_agent
+if _mcp_toolset is not None:
+    _ROOT_TOOLS.append(_mcp_toolset)
+    _QUERY_TOOLS.append(_mcp_toolset)
+else:
+    logger.warning("MCP toolset unavailable — no agent can execute ClickHouse SQL")
 
 _root_agent = Agent(
     model=_model,
@@ -217,7 +283,7 @@ _root_agent = Agent(
         "using IMDb data from ClickHouse, produces data-backed acquisition memos."
     ),
     instruction=ORCHESTRATOR_PROMPT,
-    sub_agents=[schema_agent, query_agent, evidence_agent, decision_agent],
+    tools=_ROOT_TOOLS,
 )
 
 root_agent = _root_agent
