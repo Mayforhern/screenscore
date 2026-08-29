@@ -1,6 +1,6 @@
 # ScreenScore — Studio Acquisition Analyst
 
-> **Runtime stack:** Google Cloud Run + Google ADK (Gemini 3.5 Flash Lite) + ClickHouse SQL Playground via MCP. Every answer is grounded in live SQL execution against the IMDb dataset — no cached results, no model hallucination.
+> **Runtime stack:** Google Cloud Run + Google ADK (Gemini 3.1 Flash Lite) + ClickHouse SQL Playground via MCP. Every answer is grounded in live SQL execution against the IMDb dataset — no cached results, no model hallucination.
 
 Built for the [Agentic Cinema: The Blockbuster Hackathon](https://agentic-cinema.devpost.com/) — ClickHouse Track.
 
@@ -8,7 +8,7 @@ Built for the [Agentic Cinema: The Blockbuster Hackathon](https://agentic-cinema
 
 ## What It Does
 
-ScreenScore is a Studio Acquisition Analyst agent. It evaluates film and TV titles for acquisition by executing a deterministic six-step pipeline against 388K+ IMDb titles in ClickHouse, then produces a structured acquisition memo with a clear recommendation.
+ScreenScore is a Studio Acquisition Analyst agent. It evaluates film and TV titles for acquisition by executing a deterministic eight-step pipeline against 388K+ IMDb titles in ClickHouse, then produces a structured acquisition memo with a clear recommendation.
 
 **This is the workflow:**
 
@@ -17,7 +17,7 @@ ScreenScore is a Studio Acquisition Analyst agent. It evaluates film and TV titl
 3. Plan and execute ClickHouse SQL queries (ratings, genre benchmarks, director track records, cast analysis)
 4. Retrieve recent streaming/box office performance benchmarks
 5. Compare the title against historical comps and current slate
-6. Generate a downloadable acquisition memo: ACQUIRE / PASS / FURTHER REVIEW
+6. Validate constraints and generate a downloadable acquisition memo: ACQUIRE / PASS / FURTHER REVIEW
 
 The agent does not answer questions from model memory. Every figure is sourced from a live SQL query.
 
@@ -37,7 +37,7 @@ The agent does not answer questions from model memory. Every figure is sourced f
 User (natural language)
         |
         v
-  Google ADK Agent (Gemini 3.5 Flash Lite)
+  Google ADK Agent (Gemini 3.1 Flash Lite) — single agent, all tools
         |
         |--- list_tables / run_query -----> ClickHouse MCP Server (mcp-clickhouse)
         |                                          |
@@ -60,7 +60,7 @@ User (natural language)
 | Component | Technology |
 |---|---|
 | Agent SDK | `google-adk` >= 2.7.0 |
-| LLM | Gemini 3.5 Flash Lite |
+| LLM | Gemini 3.1 Flash Lite |
 | MCP Server | `mcp-clickhouse` >= 0.4.1 |
 | Database | ClickHouse SQL Playground (IMDb dataset) |
 | Deployment | Google Cloud Run |
@@ -68,18 +68,41 @@ User (natural language)
 
 ---
 
-## Six-Step Pipeline
+## Eight-Step Pipeline
 
 The agent follows a deterministic pipeline for every acquisition request:
 
 | Step | Name | What happens |
 |---|---|---|
-| 1 | DISCOVER | Calls `list_tables` to confirm schema |
-| 2 | PLAN | States the query plan before writing SQL |
-| 3 | QUERY | Executes ClickHouse SQL — `run_query` (read-only) |
-| 4 | ANALYZE | Extracts ratings, genre position, director track record |
-| 5 | COMPARE | Calls `get_title_performance` for streaming benchmarks |
-| 6 | DECIDE | Calls `generate_acquisition_memo` — saves ACQUIRE/PASS/FURTHER_REVIEW memo |
+| 1 | SCHEMA | Calls `init_pipeline_state()` + `get_schema_info()` to verify schema |
+| 2 | DISCOVER | Calls `list_tables` to confirm available tables |
+| 3 | PLAN | Prints numbered query plan before writing SQL |
+| 4 | QUERIES | Executes ClickHouse SQL — `run_query` (read-only), with adaptive recovery |
+| 5 | ANALYZE | Extracts ratings, genre position, director track record; tracks evidence |
+| 6 | COMPARE | Calls `get_title_performance` for streaming benchmarks |
+| 7 | VALIDATE | Calls `validate_analysis_constraints()` — enforces all user constraints |
+| 8 | DECIDE | Calls `generate_acquisition_memo` — saves ACQUIRE/PASS/FURTHER_REVIEW memo |
+
+---
+
+## Anti-Hallucination Enforcement
+
+The agent enforces strict data provenance at every step:
+
+- **Raw result display:** Every query result is printed verbatim before processing
+- **Self-audit:** Before recommendations, each title is verified against raw query output
+- **Zero fabrication tolerance:** Any invented title, year, rating, or genre triggers pipeline failure
+- **Source labeling:** Every figure labeled `[ClickHouse IMDb]`, `[Synthetic Benchmark]`, `[LLM Inference]`, or `[User-provided]`
+
+---
+
+## Rate Limiting
+
+The agent includes an async sliding-window rate limiter to stay within Gemini free tier quotas:
+
+- **4 requests per minute** (free tier limit: 5 RPM)
+- **Retry backoff:** 15s initial, 60s max, 3 attempts
+- **Cloud Run timeout:** 600 seconds
 
 ---
 
@@ -131,7 +154,9 @@ gcloud run deploy screenscore \
   --region=us-central1 \
   --port=8000 \
   --allow-unauthenticated \
-  --memory=1Gi \
+  --memory=512Mi \
+  --cpu=1 \
+  --timeout=600 \
   --max-instances=1 \
   --set-env-vars="GOOGLE_API_KEY=YOUR_KEY,CLICKHOUSE_HOST=sql-clickhouse.clickhouse.com,..."
 ```
@@ -144,9 +169,11 @@ gcloud run deploy screenscore \
 screenscore/
 ├── screenscore/
 │   ├── __init__.py        # ADK module discovery
-│   ├── agent.py           # Agent definition + MCP ClickHouse integration
-│   ├── prompt.py          # System prompt — 6-step deterministic pipeline
-│   └── tools.py           # Tools: acquisition memo, performance data, table/chart
+│   ├── agent.py           # Agent definition + MCP ClickHouse integration + rate limiter
+│   ├── prompt.py          # System prompt — 8-step deterministic pipeline
+│   ├── tools.py           # Tools: acquisition memo, performance data, table/chart
+│   ├── pipeline.py        # Pipeline state machine with query lifecycle tracking
+│   └── rate_limiter.py    # Async sliding-window rate limiter for Gemini API
 ├── main.py                # FastAPI app — landing page + ADK routes
 ├── Dockerfile
 ├── requirements.txt
@@ -161,6 +188,7 @@ screenscore/
 | Variable | Default | Description |
 |---|---|---|
 | `GOOGLE_API_KEY` | — | Google AI Studio API key |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Gemini model name (set via env var) |
 | `CLICKHOUSE_HOST` | `sql-clickhouse.clickhouse.com` | ClickHouse host |
 | `CLICKHOUSE_PORT` | `8443` | ClickHouse HTTPS port |
 | `CLICKHOUSE_USER` | `demo` | ClickHouse username |
