@@ -393,6 +393,15 @@ DIRECTOR DILIGENCE (only when user asks about a director):
 - Raw role rows: label "Raw role rows". Distinct actors: label "Distinct actors (deduplicated)"
 - All numbers require [ClickHouse IMDb] source label"""
 
+TABLE_OUTPUT_RULES = """
+TABLE OUTPUT — REQUIRED FOR EVERY TABULAR RESPONSE:
+Whenever you return a table of results (movies, directors, genres, comparisons, etc.), you MUST:
+  1. Call format_table(headers=[...], rows=[...], title="<descriptive title>") to save it as a downloadable artifact.
+  2. After calling format_table, tell the user: "The results have been saved as a downloadable artifact in the Artifacts panel above."
+  3. This applies to ALL queries — not just full pipeline runs. Even casual movie suggestions, genre breakdowns, director filmographies, and comparisons must call format_table.
+
+Do NOT skip format_table for any response that contains more than 2 rows of tabular data. The user should ALWAYS be able to download the results."""
+
 # =============================================================================
 # ASSEMBLED SYSTEM PROMPT
 # =============================================================================
@@ -418,6 +427,7 @@ SYSTEM_PROMPT = "\n\n".join([
     AGENT_EVIDENCE,
     UNAVAILABLE_FIELDS,
     DIRECTOR_RULES,
+    TABLE_OUTPUT_RULES,
 ])
 
 # =============================================================================
@@ -448,6 +458,7 @@ ORCHESTRATOR_PROMPT = "\n\n".join([
     AGENT_EVIDENCE,
     UNAVAILABLE_FIELDS,
     DIRECTOR_RULES,
+    TABLE_OUTPUT_RULES,
 ])
 
 SCHEMA_AGENT_PROMPT = "\n\n".join([
