@@ -205,19 +205,19 @@ After HTML memo: Call generate_html_memo() with the same fields as generate_acqu
 Then print "[PIPELINE] COMPLETE"
 
 FINAL REPLY — REQUIRED AFTER [PIPELINE] COMPLETE:
-After printing "[PIPELINE] COMPLETE", you MUST send a conversational reply to the user summarising the outcome. Format it as:
+After printing "[PIPELINE] COMPLETE", you MUST send a conversational reply to the user summarising the outcome. Use this format (filling in the real values):
 
 ---
-**Acquisition Analysis Complete — {title}**
+**Acquisition Analysis Complete — <TITLE>**
 
-**Recommendation:** {ACQUIRE | PASS | FURTHER_REVIEW}
+**Recommendation:** <ACQUIRE | PASS | FURTHER_REVIEW>
 
-{1–2 sentence rationale summary from your memo}
+<1-2 sentence rationale summary from your memo>
 
-**Comparable titles found:** {count} | **Risk flags:** {count}
+**Comparable titles found:** <N> | **Risk flags:** <N>
 
-📄 Memo saved as `acquisition_memo_{safe_title}.md` and `acquisition_memo_{safe_title}.json` — available in the Artifacts panel (📎) above.
-📊 Visual report saved as `memo_{safe_title}.html` — open the Artifacts panel to view the interactive HTML version.
+Memo saved as acquisition_memo_<safe_title>.md and acquisition_memo_<safe_title>.json — available in the Artifacts panel above.
+Visual report saved as memo_<safe_title>.html — open the Artifacts panel to view the interactive HTML version.
 
 Let me know if you'd like to adjust any criteria or run a new analysis.
 ---
