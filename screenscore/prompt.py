@@ -201,7 +201,28 @@ THEN: Call generate_acquisition_memo with ALL fields:
   - constraint_violations, sql_queries_run, constraint_audit, title_metadata, sql_plan, director_analysis
 
 After memo: Call mark_memo_generated()
-After HTML memo: Print "[PIPELINE] COMPLETE" """
+After HTML memo: Call generate_html_memo() with the same fields as generate_acquisition_memo.
+Then print "[PIPELINE] COMPLETE"
+
+FINAL REPLY — REQUIRED AFTER [PIPELINE] COMPLETE:
+After printing "[PIPELINE] COMPLETE", you MUST send a conversational reply to the user summarising the outcome. Format it as:
+
+---
+**Acquisition Analysis Complete — {title}**
+
+**Recommendation:** {ACQUIRE | PASS | FURTHER_REVIEW}
+
+{1–2 sentence rationale summary from your memo}
+
+**Comparable titles found:** {count} | **Risk flags:** {count}
+
+📄 Memo saved as `acquisition_memo_{safe_title}.md` and `acquisition_memo_{safe_title}.json` — available in the Artifacts panel (📎) above.
+📊 Visual report saved as `memo_{safe_title}.html` — open the Artifacts panel to view the interactive HTML version.
+
+Let me know if you'd like to adjust any criteria or run a new analysis.
+---
+
+Do NOT skip this reply. The user MUST receive a human-readable answer at the end of every pipeline run, not just tool-call output. """
 
 TERMINAL_CONDITIONS = """
 TERMINAL CONDITIONS — pipeline terminates ONLY when ALL true:

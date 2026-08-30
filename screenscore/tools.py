@@ -727,12 +727,14 @@ country, awards. This document does not constitute legal, financial, or contract
 
     if tool_context:
         safe_title = title[:40].replace(" ", "_").replace("/", "-")
+        md_filename = f"acquisition_memo_{safe_title}.md"
+        json_filename = f"acquisition_memo_{safe_title}.json"
 
         memo_artifact = types.Part(
             inline_data=types.Blob(mime_type="text/markdown", data=memo_md.encode("utf-8"))
         )
-        await tool_context.save_artifact(
-            filename=f"acquisition_memo_{safe_title}.md", artifact=memo_artifact
+        md_version = await tool_context.save_artifact(
+            filename=md_filename, artifact=memo_artifact
         )
 
         json_artifact = types.Part(
@@ -741,18 +743,30 @@ country, awards. This document does not constitute legal, financial, or contract
                 data=json.dumps(memo_json, indent=2).encode("utf-8"),
             )
         )
-        await tool_context.save_artifact(
-            filename=f"acquisition_memo_{safe_title}.json", artifact=json_artifact
+        json_version = await tool_context.save_artifact(
+            filename=json_filename, artifact=json_artifact
         )
 
-        logger.info("Saved memo artifacts for '%s'", title)
+        logger.info(
+            "Saved memo artifacts for '%s': %s (v%s), %s (v%s)",
+            title, md_filename, md_version, json_filename, json_version,
+        )
+
+    artifact_filename = f"acquisition_memo_{title[:40].replace(' ', '_').replace('/', '-')}.md" if tool_context else None
+
 
     return {
         "status": "success",
         "recommendation": recommendation,
         "title": title,
         "constraint_violations": violations,
-        "message": f"Acquisition memo for '{title}' saved. Recommendation: {recommendation}.",
+        "artifact_filename": artifact_filename,
+        "message": (
+            f"Acquisition memo for '{title}' saved as '{artifact_filename}'. "
+            f"Recommendation: {recommendation}."
+            if artifact_filename
+            else f"Acquisition memo for '{title}' generated. Recommendation: {recommendation}."
+        ),
         "memo_markdown": memo_md,
         "memo_json": json.dumps(memo_json, indent=2),
     }
