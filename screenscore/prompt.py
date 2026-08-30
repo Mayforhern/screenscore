@@ -175,10 +175,20 @@ You will pass this dict to generate_acquisition_memo as `constraint_audit`."""
 
 STEP_8_DECIDE = """
 STEP 8 — DECIDE
-Only call generate_acquisition_memo if Step 7 returned proceed_to_memo = True.
+Call generate_acquisition_memo if Step 7 returned proceed_to_memo = True.
+
+TARGET ABSENT FROM DATABASE — SPECIAL HANDLING:
+  If the target title was NOT found in ClickHouse (Q4 returned 0 rows):
+  - recommendation MUST be "FURTHER_REVIEW"
+  - Rationale: "Target absent from ClickHouse database (1888–2008). No direct data available for this title. Genre benchmarks and historical fallback comps provided for reference. Recommend further diligence before acquisition decision."
+  - comparable_titles MUST be [] (empty — no exact matches possible)
+  - comparable_titles_status: "Target absent from ClickHouse — no direct comparable data available"
+  - Do NOT fabricate data to fill the gap
 
 RATIONALE RULES:
-  - If no director: "Director track-record analysis is unavailable because no director was supplied"
+  - If target absent: explain "Target absent from ClickHouse — no direct data available"
+  - If no director supplied: "Director track-record analysis is unavailable because no director was supplied"
+  - If director supplied but target absent: "Director track record unavailable — target absent from database"
   - Do NOT say "viable streaming potential" from synthetic comps
   - Base recommendation primarily on level of UNCERTAINTY, not genre average alone
   - Do NOT imply a genre average is inherently bad or good — it is a reference benchmark
@@ -202,6 +212,16 @@ TERMINAL CONDITIONS — pipeline terminates ONLY when ALL true:
   5. memo_generated is True
 
 Call check_terminal_conditions() after each major phase. If any False, continue pipeline.
+
+TARGET ABSENT FROM DATABASE — CRITICAL CONTINUATION RULE:
+  If Q4 returns 0 rows (target not in ClickHouse):
+  - This is NOT a pipeline failure — it is expected for post-2008 titles
+  - Continue through ALL remaining steps (STEP 5, 6, 7, 8)
+  - Set comparable_titles_status = "ZERO — target absent from database"
+  - Run genre benchmarks (Q2) and historical fallbacks (Q5b) — these still work
+  - STEP 7: validation passes with warnings (not failures)
+  - STEP 8: recommendation MUST be FURTHER_REVIEW with explanation
+  - NEVER stop after Q4 — always proceed through validation → decision → memo
 
 After Q5/Q5b (even if insufficient): set comparable_titles_status, continue to STEP 7 → STEP 8.
 NEVER stop after last query — always proceed through validation → decision → memo.

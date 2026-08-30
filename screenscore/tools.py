@@ -210,6 +210,7 @@ async def validate_analysis_constraints(
 
     # Evidence dependency propagation
     evidence_gates = []
+    target_absent = False
     if tool_context:
         pipeline = _get_pipeline(tool_context.state)
         registry = EvidenceRegistry.from_dict({
@@ -224,6 +225,12 @@ async def validate_analysis_constraints(
         target_genres_verified = (
             _tg_status is not None
             and str(getattr(_tg_status, "value", _tg_status)) in ("verified", "derived")
+        )
+
+        # Detect if target is absent from database (not_verified = target not in ClickHouse)
+        target_absent = (
+            _tg_status is not None
+            and str(getattr(_tg_status, "value", _tg_status)) == "not_verified"
         )
 
         checks["target_genres_verified"] = {
@@ -254,27 +261,61 @@ async def validate_analysis_constraints(
         pipeline["evidence_claims"] = registry.to_dict()["claims"]
         pipeline["evidence_dependencies"] = registry.to_dict()["dependencies"]
 
+    # Evidence gates are warnings, not blockers — memo can still be generated
+    # with FURTHER_REVIEW recommendation when evidence is incomplete
     if evidence_gates:
         checks["evidence_dependencies_satisfied"] = {
             "value": False,
-            "pass": False,
-            "note": "Evidence dependency validation failed",
+            "pass": True,  # Warning, not blocker — allow memo with FURTHER_REVIEW
+            "note": "Evidence dependency warnings — proceed with FURTHER_REVIEW recommendation",
             "gates": evidence_gates,
         }
 
-    failures = [k for k, v in checks.items() if not v["pass"]]
-    status = "PASS" if not failures else "FAIL"
+    # Separate blocking failures from warnings
+    blocking_failures = []
+    warnings = []
+    for k, v in checks.items():
+        if not v["pass"]:
+            if k in ("evidence_dependencies_satisfied", "target_genres_verified"):
+                warnings.append(k)
+            else:
+                blocking_failures.append(k)
+
+    # If target is absent, this is expected — not a failure
+    if target_absent and "target_genres_verified" in blocking_failures:
+        blocking_failures.remove("target_genres_verified")
+        checks["target_genres_verified"]["pass"] = True
+        checks["target_genres_verified"]["note"] = (
+            "Target absent from ClickHouse — using genre benchmarks and historical fallback only"
+        )
+
+    status = "PASS" if not blocking_failures else "FAIL"
+
+    # Determine proceed_to_memo logic
+    if status == "PASS":
+        proceed_to_memo = True
+        if warnings:
+            message = (
+                "Constraints validated with warnings. "
+                "Proceed to memo with FURTHER_REVIEW recommendation due to evidence gaps."
+            )
+        else:
+            message = "All constraints validated. Safe to call generate_acquisition_memo."
+    else:
+        proceed_to_memo = False
+        message = (
+            f"VALIDATION FAILED: {blocking_failures}. "
+            f"Do NOT call generate_acquisition_memo. Report failures to user."
+        )
 
     return {
         "status": status,
         "checks": checks,
-        "failures": failures,
-        "proceed_to_memo": status == "PASS",
-        "message": (
-            "All constraints validated. Safe to call generate_acquisition_memo."
-            if status == "PASS"
-            else f"VALIDATION FAILED: {failures}. Do NOT call generate_acquisition_memo. Report failures to user."
-        ),
+        "failures": blocking_failures,
+        "warnings": warnings,
+        "evidence_gates": evidence_gates,
+        "proceed_to_memo": proceed_to_memo,
+        "message": message,
     }
 
 
