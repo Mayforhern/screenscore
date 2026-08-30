@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ScreenScore — Studio Acquisition Analyst</title>
 <meta name="description" content="AI-powered acquisition analysis on 388K+ IMDb titles via ClickHouse. ScreenScore produces data-backed acquisition memos — Acquire, Pass, or Further Review.">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="shortcut icon" type="image/png" href="/static/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet">
 <style>
@@ -51,12 +53,15 @@
     border-bottom: 1px solid var(--border);
   }
   .nav-logo {
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text);
+    display: flex;
+    align-items: center;
     text-decoration: none;
+  }
+  .nav-logo-img {
+    height: 38px;
+    width: auto;
+    display: block;
+    object-fit: contain;
   }
   .nav-links {
     display: flex;
@@ -468,7 +473,7 @@
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="/" class="nav-logo">ScreenScore</a>
+  <a href="/" class="nav-logo"><img src="/static/logo.png" alt="ScreenScore" class="nav-logo-img"></a>
   <ul class="nav-links" id="navLinks">
     <li><a href="#pipeline">Pipeline</a></li>
     <li><a href="#features">Features</a></li>
@@ -747,7 +752,7 @@
 
 <!-- FOOTER -->
 <footer>
-  <span class="footer-logo">ScreenScore</span>
+  <span class="footer-logo"><img src="/static/logo.png" alt="ScreenScore" style="height: 28px; width: auto; vertical-align: middle;"></span>
   <ul class="footer-links">
     <li><a href="https://agentic-cinema.devpost.com/" target="_blank">Hackathon</a></li>
     <li><a href="https://clickhouse.com/" target="_blank">ClickHouse</a></li>

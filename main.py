@@ -53,6 +53,22 @@ adk_app.router.routes = [
 adk_app.add_api_route("/", _landing, methods=["GET"], include_in_schema=False)
 adk_app.add_api_route("/home", _landing, methods=["GET"], include_in_schema=False)
 
+from starlette.staticfiles import StaticFiles
+
+_STATIC_DIR = _DIR / "screenscore" / "static"
+if _STATIC_DIR.exists():
+    adk_app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+async def _favicon(request: Request):
+    fav_path = _STATIC_DIR / "favicon.png"
+    if fav_path.exists():
+        from starlette.responses import FileResponse
+        return FileResponse(fav_path, media_type="image/png")
+    return HTMLResponse(content="", status_code=404)
+
+adk_app.add_api_route("/favicon.ico", _favicon, methods=["GET"], include_in_schema=False)
+adk_app.add_api_route("/favicon.png", _favicon, methods=["GET"], include_in_schema=False)
+
 logger.info("ScreenScore app initialized")
 
 
