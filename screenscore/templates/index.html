@@ -58,10 +58,14 @@
     text-decoration: none;
   }
   .nav-logo-img {
-    height: 38px;
+    height: 42px;
     width: auto;
     display: block;
     object-fit: contain;
+    transition: transform 0.2s ease;
+  }
+  .nav-logo:hover .nav-logo-img {
+    transform: scale(1.03);
   }
   .nav-links {
     display: flex;
