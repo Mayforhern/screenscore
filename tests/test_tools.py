@@ -32,7 +32,7 @@ async def test_get_title_performance_found():
     result = await get_title_performance("Oppenheimer")
     assert result["status"] == "found"
     assert result["title"] == "oppenheimer"
-    assert result["source_label"] == "[Synthetic Benchmark]"
+    assert result["source_label"] == "[Synthetic Benchmark — Curated Market Registry, not ClickHouse]"
     assert "opening_week_usd_m" in result
 
 

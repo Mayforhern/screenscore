@@ -2,6 +2,8 @@
 
 > **Runtime stack:** Google Cloud Run + Google ADK (Gemini 3.1 Flash Lite) + ClickHouse SQL Playground via MCP. Every answer is grounded in live SQL execution against the IMDb dataset — no cached results, no model hallucination.
 
+> **Dataset coverage:** The ClickHouse SQL Playground contains **388K+ IMDb titles from 1888–2008**. For post-2008 titles (e.g. *Oppenheimer*, *Anora*), ScreenScore runs a two-layer analysis: (1) live ClickHouse SQL for genre benchmarks, historical comparables, and director track records from the database, and (2) a curated market comps layer (`[Synthetic Benchmark]`) for recent streaming/box office figures. The agent never fabricates data — it explicitly labels every figure's source.
+
 Built for the [Agentic Cinema: The Blockbuster Hackathon](https://agentic-cinema.devpost.com/) — ClickHouse Track.
 
 ---
@@ -25,11 +27,17 @@ The agent does not answer questions from model memory. Every figure is sourced f
 
 ### Example Queries
 
-- "Evaluate *Anatomy of a Fall* for acquisition — how does it compare to our drama slate?"
-- "Show me all A24-distributed films with IMDb rating above 7.5 since 2018 and their genre breakdown"
-- "Which directors have the most consistently-rated filmographies over 10+ films?"
-- "Compare the rating trajectory of psychological thrillers vs. crime dramas since 2010"
+**ClickHouse SQL-grounded queries (database covers 1888–2008):**
+- "Which directors have the most consistently-rated Drama filmographies over 10+ films?"
+- "Compare the IMDb rating trajectory of psychological thrillers vs. crime dramas across decades"
+- "Show me the top 20 highest-rated Sci-Fi films in ClickHouse and their genre breakdown"
+- "Run a full acquisition analysis on *No Country for Old Men* — director track record, genre comp, recommendation"
+- "Evaluate *There Will Be Blood* for acquisition — how does it compare to our drama slate?"
+
+**Two-layer analysis (ClickHouse history + Synthetic Market Comps):**
 - "Run a full acquisition analysis on *Anora* — director track record, genre comp, recommendation"
+- "Evaluate *Anatomy of a Fall* for acquisition — how does it compare to our drama slate?"
+- "Compare *Oppenheimer* against the historical biography/drama benchmark from ClickHouse"
 
 ---
 

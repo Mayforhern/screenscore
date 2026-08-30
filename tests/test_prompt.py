@@ -26,7 +26,7 @@ def test_system_prompt_contains_pipeline_steps():
     assert "STEP 3 — PLAN" in SYSTEM_PROMPT
     assert "STEP 4 — QUERIES" in SYSTEM_PROMPT
     assert "STEP 5 — ANALYZE" in SYSTEM_PROMPT
-    assert "STEP 6 — SYNTHETIC MARKET COMPS" in SYSTEM_PROMPT
+    assert "STEP 6 — RECENT MARKET COMPS" in SYSTEM_PROMPT
     assert "STEP 7 — CONSTRAINT VALIDATION" in SYSTEM_PROMPT
     assert "STEP 8 — DECIDE" in SYSTEM_PROMPT
 
@@ -49,7 +49,7 @@ def test_system_prompt_contains_unavailable_fields():
 
 def test_system_prompt_labels_required():
     assert "[ClickHouse IMDb]" in SYSTEM_PROMPT
-    assert "[Synthetic Benchmark]" in SYSTEM_PROMPT
+    assert "[Synthetic Benchmark — Curated Market Registry, not ClickHouse]" in SYSTEM_PROMPT
     assert "[User-provided]" in SYSTEM_PROMPT
     assert "[Unavailable]" in SYSTEM_PROMPT
 
