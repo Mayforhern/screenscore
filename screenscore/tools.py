@@ -347,14 +347,25 @@ async def get_title_performance(title: str) -> dict[str, Any]:
             "status": "found",
             "title": matched_key,
             "year": d.get("year"),
+            "director": d.get("director"),
+            "director_known_for": d.get("director_known_for"),
+            "cast": d.get("cast"),
+            "imdb_rating": d.get("imdb_rating"),
             "streaming_views_m_first30": d.get("streaming_views_m_first30"),
             "opening_week_usd_m": d.get("opening_week_usd_m"),
+            "box_office_total_usd_m": d.get("box_office_total_usd_m"),
+            "budget_usd_m": d.get("budget_usd_m"),
             "platform": d.get("platform"),
             "genre": d.get("genre"),
             "awards": d.get("awards"),
             "source": "curated_market_registry",
             "source_label": "[Synthetic Benchmark — Curated Market Registry, not ClickHouse]",
-            "registry_note": "Part of ScreenScore two-layer architecture: ClickHouse SQL (1888-2008) + Curated Market Registry (2022-2025)",
+            "registry_note": (
+                "Part of ScreenScore two-layer architecture: "
+                "ClickHouse SQL (1888–2008 historical data) + "
+                "Curated Market Registry (2021–2025 recent titles). "
+                "imdb_rating is from public IMDb as of registry build date."
+            ),
         }
 
     if key in _PERFORMANCE_DATA:
@@ -372,8 +383,8 @@ async def get_title_performance(title: str) -> dict[str, Any]:
     return {
         "status": "not_found",
         "title": title,
-        "source": "synthetic",
-        "message": f"No synthetic benchmark data for '{title}'.",
+        "source": "curated_market_registry",
+        "message": f"No curated market data for '{title}'.",
         "available_titles": sorted(_PERFORMANCE_DATA.keys()),
     }
 

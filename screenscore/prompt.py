@@ -195,23 +195,37 @@ STEP_8_DECIDE = """
 STEP 8 — DECIDE
 Call generate_acquisition_memo if Step 7 returned proceed_to_memo = True.
 
-TARGET ABSENT FROM DATABASE — SPECIAL HANDLING (this is the anti-hallucination system working correctly):
+TARGET ABSENT FROM DATABASE — DECISION RULES (this is the anti-hallucination system working correctly):
   If the target title was NOT found in ClickHouse (Q4 returned 0 rows):
-  - This is EXPECTED and CORRECT for post-2008 titles — the database covers 1888–2008 by design of the ClickHouse SQL Playground demo dataset.
-  - recommendation MUST be "FURTHER_REVIEW"
-  - Rationale MUST reference the two-layer architecture: "Target absent from ClickHouse IMDb dataset (covers 1888–2008 — dataset boundary, not a data error). ScreenScore's anti-hallucination system correctly refused to fabricate data. Analysis uses: (1) ClickHouse live SQL for genre benchmarks and historical comparable titles, and (2) Curated Market Registry figures for recent market performance [Synthetic Benchmark]. Recommend further diligence before final acquisition decision."
-  - comparable_titles MUST be [] (empty — no exact matches possible without target in database)
-  - comparable_titles_status: "Target absent from ClickHouse (1888–2008 dataset boundary) — genre benchmarks and historical fallback comps provided via live SQL"
-  - Do NOT fabricate data to fill the gap
-  - DO highlight to the user: "This FURTHER_REVIEW recommendation demonstrates ScreenScore's zero-hallucination guarantee: the agent ran real ClickHouse SQL for genre/director analysis, then clearly labeled what is database-sourced vs. curated benchmark data."
+  - This is EXPECTED for post-2008 titles — the ClickHouse SQL Playground dataset covers 1888–2008 by design.
+  - The agent uses the Two-Layer Architecture: ClickHouse SQL (genre benchmarks, historical comparables, director track record) + Curated Market Registry (director, cast, IMDb rating, box office, streaming, awards).
+  - comparable_titles MUST be [] (empty — no exact matches possible without target in ClickHouse)
+  - comparable_titles_status: "Target absent from ClickHouse (1888–2008 dataset boundary) — analysis uses Curated Market Registry + ClickHouse genre benchmarks"
+
+  RECOMMENDATION LOGIC for post-2008 titles — base decision on curated data quality:
+
+  STRONG curated data (imdb_rating known + awards known + box_office or streaming known):
+    → May recommend ACQUIRE or PASS based on the actual data signals:
+      - ACQUIRE signals: imdb_rating ≥ 7.5, strong awards, healthy box_office or streaming
+      - PASS signals: imdb_rating < 6.5, no awards, weak commercial performance
+      - Label rationale: "Based on Curated Market Registry data [Synthetic Benchmark] + ClickHouse genre benchmarks [ClickHouse IMDb]."
+
+  THIN curated data (only 1-2 data points, imdb_rating unknown, no box office):
+    → Recommend FURTHER_REVIEW
+    → Rationale: "Insufficient market data available for a confident recommendation."
+
+  DO NOT default to FURTHER_REVIEW just because the title is absent from ClickHouse.
+  DO highlight: "Analysis uses ClickHouse live SQL for genre/director history [ClickHouse IMDb] and Curated Market Registry for recent performance metrics [Synthetic Benchmark]."
+  Do NOT fabricate any data fields that are not in the registry.
 
 RATIONALE RULES:
-  - If target absent: explain "Target absent from ClickHouse — no direct data available"
+  - Always label sources: [ClickHouse IMDb] for database facts, [Synthetic Benchmark] for curated registry
   - If no director supplied: "Director track-record analysis is unavailable because no director was supplied"
-  - If director supplied but target absent: "Director track record unavailable — target absent from database"
-  - Do NOT say "viable streaming potential" from synthetic comps
-  - Base recommendation primarily on level of UNCERTAINTY, not genre average alone
-  - Do NOT imply a genre average is inherently bad or good — it is a reference benchmark
+  - If director supplied but target absent from ClickHouse: use Curated Market Registry director field if available
+  - Do NOT say "viable streaming potential" — use actual streaming figures
+  - Base recommendation on actual data signals, not just uncertainty level
+  - Do NOT imply a genre average is inherently good or bad — it is a reference benchmark
+
 
 FIRST: Call mark_decision_complete(recommendation="ACQUIRE"|"PASS"|"FURTHER_REVIEW")
 
@@ -258,10 +272,11 @@ TARGET ABSENT FROM DATABASE — CRITICAL CONTINUATION RULE:
   If Q4 returns 0 rows (target not in ClickHouse):
   - This is NOT a pipeline failure — it is expected for post-2008 titles
   - Continue through ALL remaining steps (STEP 5, 6, 7, 8)
-  - Set comparable_titles_status = "ZERO — target absent from database"
+  - Set comparable_titles_status = "ZERO — target absent from ClickHouse database (1888–2008)"
   - Run genre benchmarks (Q2) and historical fallbacks (Q5b) — these still work
+  - STEP 6: call get_title_performance for the target — it returns rich curated data (director, cast, IMDb rating, box office, awards)
   - STEP 7: validation passes with warnings (not failures)
-  - STEP 8: recommendation MUST be FURTHER_REVIEW with explanation
+  - STEP 8: use curated data quality to decide ACQUIRE / PASS / FURTHER_REVIEW (see Step 8 decision rules)
   - NEVER stop after Q4 — always proceed through validation → decision → memo
 
 After Q5/Q5b (even if insufficient): set comparable_titles_status, continue to STEP 7 → STEP 8.
