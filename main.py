@@ -27,6 +27,8 @@ adk_app = get_fast_api_app(
 )
 
 _INDEX_PATH = _DIR / "screenscore" / "templates" / "index.html"
+_ARCH_PATH = _DIR / "screenscore" / "templates" / "architecture.html"
+
 try:
     _index_html = _INDEX_PATH.read_text()
 except FileNotFoundError:
@@ -37,10 +39,18 @@ except FileNotFoundError:
         "<p><a href='/dev-ui/'>Launch Agent →</a></p></body></html>"
     )
 
+try:
+    _arch_html = _ARCH_PATH.read_text()
+except FileNotFoundError:
+    logger.warning("architecture.html not found at %s", _ARCH_PATH)
+    _arch_html = _index_html
 
 
 async def _landing(request: Request):
     return HTMLResponse(content=_index_html)
+
+async def _architecture(request: Request):
+    return HTMLResponse(content=_arch_html)
 
 
 # Remove the ADK redirect that sends / → /dev-ui/ so our page wins
@@ -52,6 +62,8 @@ adk_app.router.routes = [
 # Add our landing page at / and /home
 adk_app.add_api_route("/", _landing, methods=["GET"], include_in_schema=False)
 adk_app.add_api_route("/home", _landing, methods=["GET"], include_in_schema=False)
+adk_app.add_api_route("/architecture", _architecture, methods=["GET"], include_in_schema=False)
+adk_app.add_api_route("/diagram", _architecture, methods=["GET"], include_in_schema=False)
 
 from starlette.staticfiles import StaticFiles
 
